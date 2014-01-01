@@ -2,7 +2,7 @@
 -- and it is a little different from config.ini
 
 config = {
-	version = "20131201",
+	version = "20140101",
 	version_name = "V2",
 	mod_name = "Para",
 	kingdoms = { "wei", "shu", "wu", "qun", "god" },
@@ -225,7 +225,7 @@ config = {
 		"pangde->sp_pangde",
 		"shenlvbu->sp_shenlvbu",
 		"sunshangxiang->sp_sunshangxiang",
-		"xiaoqiao->wz_xiaoqiao|heg_xiaoqiao",
+		"xiaoqiao->wz_xiaoqiao|heg_xiaoqiao|sp_heg_xiaoqiao",
 		"yuanshu->tw_yuanshu",
 		"yuejin->sp_yuejin",
 		"zhangliao->tw_zhangliao",

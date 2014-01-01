@@ -31,6 +31,10 @@ function sgs.CreateTriggerSkill(spec)
 	end
 	if type(spec.priority) == "number" then
 		skill.priority = spec.priority
+	elseif type(spec.priority) == "table" then
+		for triggerEvent, priority in pairs(spec.priority) do
+			skill:insertPriorityTable(triggerEvent, priority)
+		end
 	end
 
 	return skill
@@ -70,10 +74,14 @@ end
 
 function sgs.CreateMaxCardsSkill(spec)
 	assert(type(spec.name) == "string")
-	assert(type(spec.extra_func) == "function")
+	assert(type(spec.extra_func) == "function" or type(spec.fixed_func) == "function")
 
 	local skill = sgs.LuaMaxCardsSkill(spec.name)
-	skill.extra_func = spec.extra_func
+	if spec.extra_func then
+		skill.extra_func = spec.extra_func
+	else
+		skill.fixed_func = spec.fixed_func
+	end
 
 	return skill
 end
@@ -482,7 +490,7 @@ function sgs.CreateOneCardViewAsSkill(spec)
 			local pat = spec.filter_pattern
 			if string.endsWith(pat, "!") then
 				if sgs.Self:isJilei(to_select) then return false end
-				pat = string.sub(pat, 1, -1)
+				pat = string.sub(pat, 1, -2)
 			end
 			return sgs.Sanguosha:matchExpPattern(pat, sgs.Self, to_select)
 		end

@@ -308,7 +308,7 @@ public:
         events << Debut;
     }
 
-    virtual int getPriority() const{
+    virtual int getPriority(TriggerEvent) const{
         return 5;
     }
 
@@ -479,12 +479,12 @@ public:
                     card_ids << card_id;
                 i++;
             }
-            if (card_ids.empty())
+            if (card_ids.isEmpty())
                 return false;
             else if (sunshangxiang->askForSkillInvoke(objectName(), data)) {
                 int ai_delay = Config.AIDelay;
                 Config.AIDelay = 0;
-                while (!card_ids.empty()) {
+                while (!card_ids.isEmpty()) {
                     room->fillAG(card_ids, sunshangxiang);
                     int id = room->askForAG(sunshangxiang, card_ids, true, objectName());
                     if (id == -1) {
@@ -496,7 +496,7 @@ public:
                 }
                 Config.AIDelay = ai_delay;
 
-                if (!card_ids.empty()) {
+                if (!card_ids.isEmpty()) {
                     room->broadcastSkillInvoke("yinli");
                     foreach (int id, card_ids) {
                         if (move.card_ids.contains(id)) {
@@ -788,7 +788,7 @@ bool PujiCard::targetFilter(const QList<const Player *> &targets, const Player *
 
 void PujiCard::onEffect(const CardEffectStruct &effect) const{
     Room *room = effect.from->getRoom();
-    int id = room->askForCardChosen(effect.from, effect.to, "he", "puji");
+    int id = room->askForCardChosen(effect.from, effect.to, "he", "puji", false, Card::MethodDiscard);
     room->throwCard(id, effect.to, effect.from);
 
     if (effect.from->isAlive() && this->getSuit() == Card::Spade)
@@ -867,7 +867,7 @@ public:
         frequency = Frequent;
     }
 
-    virtual int getPriority() const{
+    virtual int getPriority(TriggerEvent) const{
         return -2;
     }
 
@@ -951,7 +951,7 @@ public:
         events << TargetConfirmed << EventPhaseStart;
     }
 
-    virtual int getPriority() const{
+    virtual int getPriority(TriggerEvent) const{
         return 4;
     }
 

@@ -192,8 +192,9 @@ void Room::enterDying(ServerPlayer *player, DamageStruct *reason) {
     DyingStruct dying;
     dying.who = player;
     dying.damage = reason;
-
     QVariant dying_data = QVariant::fromValue(dying);
+
+    thread->trigger(EnterDying, this, player, dying_data);
     foreach (ServerPlayer *p, getAllPlayers()) {
         if (thread->trigger(Dying, this, p, dying_data) || player->getHp() > 0 || player->isDead())
             break;
@@ -1019,7 +1020,7 @@ bool Room::_askForNullification(const Card *trick, ServerPlayer *from, ServerPla
 
     ServerPlayer *repliedPlayer = NULL;
     time_t timeOut = ServerInfo.getCommandTimeout(S_COMMAND_NULLIFICATION, S_SERVER_INSTANCE);
-    if (!validHumanPlayers.empty()) {
+    if (!validHumanPlayers.isEmpty()) {
         if (trick->isKindOf("AOE") || trick->isKindOf("GlobalEffect")) {
             foreach (ServerPlayer *p, validHumanPlayers)
                 doNotify(p, S_COMMAND_NULLIFICATION_ASKED, toJsonString(trick->objectName()));
@@ -1801,6 +1802,7 @@ void Room::changeHero(ServerPlayer *player, const QString &new_general, bool ful
             }
             if (skill->getFrequency() == Skill::Limited && !skill->getLimitMark().isEmpty())
                 addPlayerMark(player, skill->getLimitMark());
+            thread->trigger(EventAcquireSkill, this, player, QVariant::fromValue(skill->objectName()));
         }
     }
     if (invokeStart) {
@@ -3345,7 +3347,7 @@ bool Room::broadcastProperty(ServerPlayer *player, const char *property_name, co
     QString real_value = value;
     if (real_value.isNull()) real_value = player->property(property_name).toString();
 
-    if (property_name == "role")
+    if (strcmp(property_name, "role") == 0)
         player->setShownRole(true);
 
     Json::Value arg(Json::arrayValue);
@@ -4652,7 +4654,7 @@ void Room::askForGuanxing(ServerPlayer *zhuge, const QList<int> &cards, Guanxing
         bool success = doRequest(zhuge, S_COMMAND_SKILL_GUANXING, guanxingArgs, true);
         if (!success) {
             foreach (int card_id, cards) {
-                if (guanxing_type = GuanxingDownOnly)
+                if (guanxing_type == GuanxingDownOnly)
                     m_drawPile->append(card_id);
                 else
                     m_drawPile->prepend(card_id);

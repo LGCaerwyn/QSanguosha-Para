@@ -215,14 +215,29 @@ sgs.ai_skill_cardask["@guidao-card"] = function(self, data)
 	local judge = data:toJudge()
 	local all_cards = self.player:getCards("he")
 	if all_cards:isEmpty() then return "." end
+
+	local needTokeep = ((self.player:hasSkill("leiji") and judge.card:isRed()) or (self.player:hasSkill("nosleiji") and judge.card:getSuit() ~= sgs.Card_Spade))
+						and sgs.ai_AOE_data and self:playerGetRound(judge.who) < self:playerGetRound(self.player) and self:findLeijiTarget(self.player, 50)
+						and (self:getCardsNum("Jink") > 0 or self:hasEightDiagramEffect()) and self:getFinalRetrial() == 1
+
+	local keptspade, keptblack = 0, 0
+	if needTokeep then
+		if self.player:hasSkill("nosleiji") then keptspade = 2 end
+		if self.player:hasSkill("leiji") then keptblack = 2 end
+	end
+ 
 	local cards = {}
 	for _, card in sgs.qlist(all_cards) do
 		if card:isBlack() and not card:hasFlag("using") then
+			if card:getSuit() == sgs.Card_Spade then keptspade = keptspade - 1 end
+			keptblack = keptblack - 1
 			table.insert(cards, card)
 		end
 	end
-
 	if #cards == 0 then return "." end
+	if keptblack == 1 then return "." end
+	if keptspade == 1 and not self.player:hasSkill("leiji") then return "." end
+
 	local card_id = self:getRetrialCardId(cards, judge)
 	if card_id == -1 then
 		if self:needRetrial(judge) and judge.reason ~= "beige" then
@@ -819,7 +834,7 @@ function SmartAI:getGuhuoCard(class_name, at_play, latest_version)
 		elseif class_name == "Jink" or class_name == "Nullification" then return
 		end
 	else
-		if class_name == "Peach" and self.player:hasFlag("Global_PreventPeach") then return end
+		if class_name == "Peach" and self.player:getMark("Global_PreventPeach") > 0 then return end
 	end
 	return self:getGuhuoViewCard(class_name, latest_version)
 end

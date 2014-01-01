@@ -651,7 +651,9 @@ enum TriggerEvent {
     Damaged,          // the moment for -- yiji..
     DamageComplete,   // the moment for trigger iron chain
 
+    EnterDying,
     Dying,
+    QuitDying,
     AskForPeaches,
     AskForPeachesDone,
     Death,
@@ -964,7 +966,7 @@ public:
     const ViewAsSkill *getViewAsSkill() const;
     QList<TriggerEvent> getTriggerEvents() const;
 
-    virtual int getPriority() const;
+    virtual int getPriority(TriggerEvent triggerEvent) const;
     virtual bool triggerable(const ServerPlayer *target) const;
     virtual bool trigger(TriggerEvent event, Room *room, ServerPlayer *player, QVariant &data) const = 0;
 

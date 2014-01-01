@@ -33,7 +33,7 @@ bool GameRule::triggerable(const ServerPlayer *target) const{
     return true;
 }
 
-int GameRule::getPriority() const{
+int GameRule::getPriority(TriggerEvent) const{
     return 0;
 }
 
@@ -226,7 +226,7 @@ bool GameRule::trigger(TriggerEvent triggerEvent, Room *room, ServerPlayer *play
                     card_use.card->doPreAction(room, card_use);
 
                 QList<ServerPlayer *> targets = card_use.to;
-                if (card_use.from && !card_use.to.empty()) {
+                if (card_use.from && !card_use.to.isEmpty()) {
                     foreach (ServerPlayer *to, card_use.to) {
                         if (targets.contains(to)) {
                             thread->trigger(TargetConfirming, room, to, data);
@@ -302,26 +302,30 @@ bool GameRule::trigger(TriggerEvent triggerEvent, Room *room, ServerPlayer *play
             DyingStruct dying = data.value<DyingStruct>();
             const Card *peach = NULL;
 
-            try {
-                while (dying.who->getHp() <= 0) {
-                    peach = NULL;
-                    if (dying.who->isAlive())
-                        peach = room->askForSinglePeach(player, dying.who);
-                    if (peach == NULL)
-                        break;
-                    room->useCard(CardUseStruct(peach, player, dying.who), false);
-                }
-                if (player->hasFlag("Global_PreventPeach"))
-                    room->setPlayerFlag(player, "-Global_PreventPeach");
-            }
-            catch (TriggerEvent triggerEvent) {
-                if (triggerEvent == TurnBroken || triggerEvent == StageChange) {
-                    if (player->hasFlag("Global_PreventPeach"))
-                        room->setPlayerFlag(player, "-Global_PreventPeach");
-                }
-                throw triggerEvent;
-            }
+            while (dying.who->getHp() <= 0) {
+                peach = NULL;
 
+                // coupling Wansha here to deal with complicated rule problems
+                ServerPlayer *current = room->getCurrent();
+                if (current && current->isAlive() && current->getPhase() != Player::NotActive && current->hasSkill("wansha")) {
+                    if (player != current && player != dying.who) {
+                        player->setFlags("wansha");
+                        room->addPlayerMark(player, "Global_PreventPeach");
+                    }
+                }
+
+                if (dying.who->isAlive())
+                    peach = room->askForSinglePeach(player, dying.who);
+
+                if (player->hasFlag("wansha") && player->getMark("Global_PreventPeach") > 0) {
+                    player->setFlags("-wansha");
+                    room->removePlayerMark(player, "Global_PreventPeach");
+                }
+
+                if (peach == NULL)
+                    break;
+                room->useCard(CardUseStruct(peach, player, dying.who), false);
+            }
             break;
         }
     case AskForPeachesDone: {
@@ -977,7 +981,7 @@ QString BasaraMode::getMappedRole(const QString &role) {
     return roles[role];
 }
 
-int BasaraMode::getPriority() const{
+int BasaraMode::getPriority(TriggerEvent) const{
     return 15;
 }
 
@@ -1032,8 +1036,6 @@ void BasaraMode::generalShowed(ServerPlayer *player, QString general_name) const
     } else {
         room->changeHero(player, general_name, false, false, true, false);
     }
-
-    room->getThread()->addPlayerSkills(player);
 
     names.removeOne(general_name);
     room->setTag(player->objectName(), QVariant::fromValue(names));

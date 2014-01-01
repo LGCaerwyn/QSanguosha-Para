@@ -12,7 +12,7 @@ function sgs.ai_cardsview_valuable.renxin(self, class_name, player)
 		if not dying or self:isEnemy(dying, player) or dying:objectName() == player:objectName() then return nil end
 		if hasManjuanEffect(dying) then
 			local peach_num = 0
-			if not player:hasFlag("Global_PreventPeach") then
+			if player:getMark("Global_PreventPeach") == 0 then
 				for _, c in sgs.qlist(player:getCards("he")) do
 					if isCard("Peach", c, player) then peach_num = peach_num + 1 end
 					if peach_num > 1 then return nil end
@@ -24,7 +24,7 @@ function sgs.ai_cardsview_valuable.renxin(self, class_name, player)
 			if player:getHp() < 2 and (getCardsNum("Jink", player, self.player) > 0 or getCardsNum("Analeptic", player, self.player) > 0) then return nil end
 			return "@RenxinCard=."
 		else
-			if not dying:hasFlag("Global_PreventPeach") then
+			if dying:getMark("Global_PreventPeach") == 0 then
 				for _, c in sgs.qlist(player:getHandcards()) do
 					if not isCard("Peach", c, player) then return nil end
 				end
@@ -908,8 +908,8 @@ local function getFenchengValue(self, player)
 	if not player:canDiscard(player, "he") then return self:isWeak(player) and 1.5 or 1 end
 	if self.player:hasSkill("juece") and self:isEnemy(player)
 		and player:getEquips():isEmpty() and player:getHandcardNum() == 1 and not self:needKongcheng(player)
-		and not (player:isChained() or not self:isGoodChainTarget(player, player)) then return self:isWeak(player) and 1.5 or 1 end
-	if self:isGoodChainTarget(player, player) or self:getDamagedEffects(player, self.player) or self:needToLoseHp(player, self.player) then return -0.1 end
+		and not (player:isChained() or not self:isGoodChainTarget(player, self.player)) then return self:isWeak(player) and 1.5 or 1 end
+	if self:isGoodChainTarget(player, self.player) or self:getDamagedEffects(player, self.player) or self:needToLoseHp(player, self.player) then return -0.1 end
 
 	local num = player:getEquips():length() - player:getHandcardNum()
 	if num < 0 then
@@ -972,8 +972,8 @@ sgs.ai_skill_discard.fencheng = function(self, discard_num, min_num, optional, i
 	if liru and liru:isAlive() and liru:hasSkill("juece") then juece_effect = true end
 	if not self:damageIsEffective(self.player, sgs.DamageStruct_Fire, liru) then return {} end
 	if juece_effect and self:isEnemy(liru) and self.player:getEquips():isEmpty() and self.player:getHandcardNum() == 1 and not self:needKongcheng()
-		and not (self.player:isChained() or not self:isGoodChainTarget(self.player)) then return {} end
-	if self:isGoodChainTarget(self.player) or self:getDamagedEffects(self.player, liru) or self:needToLoseHp(self.player, liru) then return {} end
+		and not (self.player:isChained() or not self:isGoodChainTarget(self.player, liru)) then return {} end
+	if self:isGoodChainTarget(self.player, liru) or self:getDamagedEffects(self.player, liru) or self:needToLoseHp(self.player, liru) then return {} end
 	local to_discard = self:askForDiscard("dummyreason", discard_num, min_num, false, include_equip)
 	if #to_discard < discard_num then return {} end
 	if not juece_effect then return to_discard

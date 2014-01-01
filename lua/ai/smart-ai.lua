@@ -10,7 +10,7 @@ math.randomseed(os.time())
 -- SmartAI is the base class for all other specialized AI classes
 SmartAI = class "SmartAI"
 
-version = "QSanguosha AI 20131201 (V1.0 Alpha)"
+version = "QSanguosha AI 20140101 (V1.4 Alpha)"
 --- this function is only function that exposed to the host program
 --- and it clones an AI instance by general name
 -- @param player The ServerPlayer object that want to create the AI object
@@ -1195,7 +1195,7 @@ function SmartAI:objectiveLevel(player)
 					return -1
 				end
 			else
-				local explicit_renegade
+				local explicit_renegade = 0
 				for _, aplayer in sgs.qlist(self.room:getOtherPlayers(player)) do
 					if sgs.ai_role[aplayer:objectName()] == "renegade" then
 						explicit_renegade = explicit_renegade + 1
@@ -2198,7 +2198,7 @@ function SmartAI:askForNullification(trick, from, to, positive)
 							or self:isWeak(to)
 							or to:hasArmorEffect("vine")
 							or to:getMark("@gale") > 0
-							or to:isChained() and not self:isGoodChainTarget(to) then
+							or to:isChained() and not self:isGoodChainTarget(to, from) then
 							return null_card
 						end
 					end
@@ -3699,7 +3699,7 @@ function SmartAI:damageIsEffective(player, nature, source)
 		end
 	end
 
-	if player:hasLordSkill("shichou") and player:getMark("@hate_to") == 0 then
+	if player:hasLordSkill("shichou") and player:getMark("xhate") == 1 then
 		for _, p in sgs.qlist(self.room:getOtherPlayers(player)) do
 			if p:getMark("hate_" .. player:objectName()) > 0 and p:getMark("@hate_to") > 0 then return self:damageIsEffective(p, nature, source) end
 		end
@@ -3737,7 +3737,7 @@ end
 
 local function prohibitUseDirectly(card, player)
 	if player:isCardLimited(card, card:getHandlingMethod()) then return true end
-	if card:isKindOf("Peach") and player:hasFlag("Global_PreventPeach") then return true end
+	if card:isKindOf("Peach") and player:getMark("Global_PreventPeach") > 0 then return true end
 	return false
 end
 
@@ -5369,7 +5369,7 @@ dofile "lua/ai/maneuvering-ai.lua"
 dofile "lua/ai/standard-ai.lua"
 dofile "lua/ai/basara-ai.lua"
 dofile "lua/ai/hulaoguan-ai.lua"
-dofile "lua/ai/convertion-ai.lua"
+dofile "lua/ai/conversion-ai.lua"
 
 local loaded = "standard|standard_cards|maneuvering"
 
