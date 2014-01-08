@@ -1301,7 +1301,7 @@ public:
                     player->tag.remove("XiaodeSkill");
                 }
             }
-        } else if (triggerEvent == EventLoseSkill && data.toString() == objectName()) {
+        } else if (triggerEvent == EventLoseSkill && data.toString() == "xiaode") {
             QString skill_name = player->tag["XiaodeSkill"].toString();
             if (!skill_name.isEmpty()) {
                 room->detachSkillFromPlayer(player, skill_name, false, true);
@@ -1687,8 +1687,8 @@ public:
         return player->canDiscard(player, "he") && !player->hasFlag("DuwuEnterDying");
     }
 
-    virtual bool viewFilter(const QList<const Card *> &selected, const Card *to_select) const{
-        return true;
+    virtual bool viewFilter(const QList<const Card *> &, const Card *to_select) const{
+        return !Self->isJilei(to_select);
     }
 
     virtual const Card *viewAs(const QList<const Card *> &cards) const{

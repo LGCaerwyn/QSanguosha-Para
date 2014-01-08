@@ -463,15 +463,13 @@ end
 sgs.ai_skill_cardchosen.noszhenggong = function(self, who, flags)
 	for i = 0, 3 do
 		if not self.player:getEquip(i) and who:getEquip(i) and not (i == 1 and self.player:hasSkills("bazhen|yizhong")) then
-			return who:getEquip(i)
+			return who:getEquip(i):getEffectiveId()
 		end
 	end
-	if who:getArmor() and self:evaluateArmor(who:getArmor()) >= self:evaluateArmor(self.player:getArmor()) then return who:getArmor() end
-	if who:getDefensiveHorse() then return who:getDefensiveHorse() end
-	if who:getOffensiveHorse() then return who:getOffensiveHorse() end
-	if who:getWeapon() and self:evaluateWeapon(who:getWeapon()) >= self:evaluateWeapon(self.player:getWeapon()) then return who:getWeapon() end
-
-	return sgs.Sanguosha:getCard(self:askForCardChosen(who, flags, "dummy"))
+	if who:getArmor() and self:evaluateArmor(who:getArmor()) >= self:evaluateArmor(self.player:getArmor()) then return who:getArmor():getEffectiveId() end
+	if who:getDefensiveHorse() then return who:getDefensiveHorse():getEffectiveId() end
+	if who:getOffensiveHorse() then return who:getOffensiveHorse():getEffectiveId() end
+	if who:getWeapon() and self:evaluateWeapon(who:getWeapon()) >= self:evaluateWeapon(self.player:getWeapon()) then return who:getWeapon():getEffectiveId() end
 end
 
 sgs.ai_skill_invoke.nosquanji = function(self, data)
@@ -1189,7 +1187,13 @@ sgs.ai_skill_use_func.NosGuhuoCard = function(card, use, self)
 	userstring = (userstring:split(":"))[3]
 	local nosguhuocard = sgs.Sanguosha:cloneCard(userstring, card:getSuit(), card:getNumber())
 	nosguhuocard:setSkillName("nosguhuo")
-	if nosguhuocard:getTypeId() == sgs.Card_TypeBasic then self:useBasicCard(nosguhuocard, use) else assert(nosguhuocard) self:useTrickCard(nosguhuocard, use) end
+	if nosguhuocard:getTypeId() == sgs.Card_TypeBasic then
+		self:useBasicCard(nosguhuocard, use)
+		if not use.isDummy and use.card and use.card:isKindOf("Slash") and (not use.to or use.to:isEmpty()) then return end
+	else
+		assert(nosguhuocard)
+		self:useTrickCard(nosguhuocard, use)
+	end
 	if not use.card then return end
 	use.card = card
 end

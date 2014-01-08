@@ -645,7 +645,8 @@ sgs.ai_skill_use_func.ZhibaCard = function(card, use, self)
 end
 
 sgs.ai_need_damaged.hunzi = function(self, attacker, player)
-	if player:hasSkill("hunzi") and player:getMark("hunzi") == 0 and self:getEnemyNumBySeat(self.room:getCurrent(), player, player, true) < player:getHp()
+	if player:hasSkill("hunzi") and player:getMark("hunzi") == 0 and not player:hasSkill("chanyuan")
+		and self:getEnemyNumBySeat(self.room:getCurrent(), player, player, true) < player:getHp()
 		and (player:getHp() > 2 or (player:getHp() == 2 and (player:faceUp() or player:hasSkill("guixin")))) then
 		return true
 	end
@@ -1013,7 +1014,7 @@ function sgs.ai_skill_choice.huashen(self, choices, data, xiaode_choice)
 		for _, askill in ipairs(("hongyuan|drzhiheng|fangquan|mizhao|quhu|fanjian|junxing|hengzheng|duanliang|guose|" ..
 								"baobian|ganlu|tiaoxin|zhaolie|chuanxin|fengshi|moukui|liegong|mengjin|tieji|kofliegong|wushuang|drwushuang|niaoxiang|" ..
 								"juejing|nosfuhun|nosqianxi|yanxiao|guhuo|nosguhuo|xuanhuo|nosxuanhuo|qiangxi|huangen" ..
-								"nosjujian|lieren|pojun|danshou|qixi|yinling|gongxin|shangyi|duoshi|nosjizhi|jizhi|zhaoxin|gongqi|drjiedao|" ..
+								"nosjujian|lieren|pojun|yishi|danshou|qixi|yinling|gongxin|shangyi|duoshi|nosjizhi|jizhi|zhaoxin|gongqi|drjiedao|" ..
 								"jingce|shengxi|wangxi|luoyi|jie|anjian|jiangchi|wusheng|longdan|jueqing|xueji|duwu|yinghun|" ..
 								"longhun|jiuchi|qingcheng|shuangren|kuangfu|nosgongqi|wushen|lianhuan|duanxie|" ..
 								"qianxi|jujian|shensu|luanji|zhijian|shuangxiong|fuluan|yanyu|drluoyi|qingyi|huoshui|zhoufu|bifa|" ..

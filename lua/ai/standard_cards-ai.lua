@@ -327,10 +327,14 @@ function SmartAI:slashIsEffective(slash, to, from, ignore_armor)
 	if not slash or not to then self.room:writeToConsole(debug.traceback()) return false end
 	from = from or self.player
 	if not ignore_armor and from:objectName() == self.player:objectName() then
-		if to:getArmor() and from:hasSkill("moukui") then
+		if self.moukui_effect then
+			ignore_armor = true
+		elseif to:getArmor() and from:hasSkill("moukui") then
 			if not self:isFriend(to) or (to:getArmor() and self:needToThrowArmor(to, true)) then
 				if not (self:isEnemy(to) and self:doNotDiscard(to)) then
-					local id = self:askForCardChosen(to, "he", "moukui")
+					self.moukui_effect = slash
+					local id = self:askForCardChosen(to, "he", "dummy")
+					self.moukui_effect = nil
 					if id == to:getArmor():getEffectiveId() then ignore_armor = true end
 				end
 			end
@@ -1019,7 +1023,14 @@ sgs.ai_skill_cardask["double-sword-card"] = function(self, data, pattern, target
 end
 
 function sgs.ai_weapon_value.qinggang_sword(self, enemy)
-	if enemy and enemy:getArmor() then return 3 end
+	if enemy and enemy:getArmor() and enemy:hasArmorEffect(enemy:getArmor():objectName()) then return 3 end
+end
+
+function sgs.ai_slash_weaponfilter.qinggang_sword(self, enemy)
+	if enemy and enemy:getArmor() and enemy:hasArmorEffect(enemy:getArmor():objectName())
+		and (sgs.card_lack[enemy:objectName()] == 1 or getCardsNum("Jink", enemy, self.player) < 1) then
+		return true
+	end
 end
 
 sgs.ai_skill_invoke.ice_sword = function(self, data)
@@ -1041,7 +1052,7 @@ sgs.ai_skill_invoke.ice_sword = function(self, data)
 		if self.player:hasSkill("tieji")
 			or (self.player:hasSkill("liegong") and (num >= self.player:getHp() or num <= self.player:getAttackRange()))
 			or (self.player:hasSkill("kofliegong") and num >= self.player:getHp()) then return false end
-		if target:hasSkills("tuntian+zaoxian") then return false end
+		if target:hasSkills("tuntian+zaoxian") and target:getPhase() == sgs.Player_NotActive then return false end
 		if target:hasSkills(sgs.need_kongcheng) then return false end
 		if target:getCards("he"):length() < 4 and target:getCards("he"):length() > 1 then return true end
 		return false
@@ -1764,12 +1775,23 @@ function SmartAI:getValuableCard(who)
 	end
 
 	if defhorse and not self:doNotDiscard(who, "e") then
-		return defhorse:getEffectiveId()
+		if self.player:getPhase() == sgs.Player_Play then
+			local slash = sgs.Sanguosha:cloneCard("slash")
+			if self.player:hasWeapon("kylin_bow") and self:slashIsAvailable(self.player, slash) and self.player:canSlash(who)
+				and self:slashIsEffective(sgs.Sanguosha:cloneCard("slash"), who, self.player)
+				and (getCardsNum("Jink", who, self.player) < 1 or sgs.card_lack[who:objectName()].Jink == 1) then
+			else
+				return defhorse:getEffectiveId()
+			end
+		else
+			return defhorse:getEffectiveId()
+		end
 	end
 
 	if armor and self:evaluateArmor(armor, who) > 3
 		and not self:needToThrowArmor(who)
-		and not self:doNotDiscard(who, "e") then
+		and not self:doNotDiscard(who, "e")
+		and not (self.moukui_effect and self.moukui_effect:isKindOf("FireSlash") and armor:isKindOf("Vine") and not self.player:hasSkill("jueqing")) then
 		return armor:getEffectiveId()
 	end
 
@@ -1788,7 +1810,8 @@ function SmartAI:getValuableCard(who)
 		if who:hasSkills(sgs.need_equip_skill) and not who:hasSkills(sgs.lose_equip_skill) then return equip:getEffectiveId() end
 	end
 
-	if armor and not self:needToThrowArmor(who) and not self:doNotDiscard(who, "e") then
+	if armor and not self:needToThrowArmor(who) and not self:doNotDiscard(who, "e")
+		and not (self.moukui_effect and self.moukui_effect:isKindOf("FireSlash") and armor:isKindOf("Vine") and not self.player:hasSkill("jueqing")) then
 		return armor:getEffectiveId()
 	end
 

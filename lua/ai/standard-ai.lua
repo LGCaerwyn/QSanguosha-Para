@@ -103,7 +103,7 @@ sgs.ai_skill_cardchosen.fankui = function(self, who, flags)
 	for i = 1, #cards, 1 do
 		if (cards[i]:getSuit() == suit and suit ~= sgs.Card_Spade)
 			or (cards[i]:getSuit() == suit and suit == sgs.Card_Spade and cards[i]:getNumber() >= 2 and cards[i]:getNumber() <= 9) then
-			return cards[i]
+			return cards[i]:getEffectiveId()
 		end
 	end
 	return nil
@@ -983,6 +983,7 @@ local jijiang_skill = {}
 jijiang_skill.name = "jijiang"
 table.insert(sgs.ai_skills, jijiang_skill)
 jijiang_skill.getTurnUseCard = function(self)
+	if not self.player:hasLordSkill("jijiang") then return end
 	local lieges = self.room:getLieges("shu", self.player)
 	if lieges:isEmpty() then return end
 	local has_friend

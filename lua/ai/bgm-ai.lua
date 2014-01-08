@@ -107,7 +107,7 @@ sgs.ai_skill_use_func.LihunCard = function(card, use, self)
 		local target
 		local jwfy = self.room:findPlayerBySkillName("shoucheng")
 		for _, enemy in ipairs(self.enemies) do
-			if enemy:isMale() and not enemy:hasSkill("kongcheng") then
+			if enemy:isMale() and not enemy:isKongcheng() and not enemy:hasSkill("kongcheng") then
 				if ((enemy:hasSkill("lianying") or (jwfy and self:isFriend(jwfy, enemy))) and self:damageMinusHp(self, enemy, 1) > 0)
 					or (enemy:getHp() < 3 and self:damageMinusHp(self, enemy, 0) > 0 and enemy:getHandcardNum() > 0)
 					or (enemy:getHandcardNum() >= enemy:getHp() and enemy:getHp() > 2 and self:damageMinusHp(self, enemy, 0) >= -1)
@@ -1144,6 +1144,7 @@ local function need_huangen(self, who)
 			if self:isWeak(who) then return true end
 			if who:hasSkills(sgs.masochism_skill) then return true end
 		end
+		if card:isKindOf("ExNihilo") then return true end
 		return false
 	elseif self:isFriend(who) then
 		if who:hasSkill("noswuyan") and from:objectName() ~= who:objectName() then return true end
@@ -1160,6 +1161,7 @@ local function need_huangen(self, who)
 			return false
 		end
 		if card:isKindOf("AmazingGrace") then return not self:hasTrickEffective(card, who, from) end
+		if card:isKindOf("ExNihilo") then return false end
 		return true
 	end
 end
