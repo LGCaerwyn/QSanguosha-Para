@@ -84,14 +84,12 @@ MainWindow::MainWindow(QWidget *parent)
     QList<QAction *> actions;
     actions << ui->actionStart_Game
             << ui->actionStart_Server
-            << ui->actionPC_Console_Start
             << ui->actionReplay
             << ui->actionConfigure
             << ui->actionGeneral_Overview
             << ui->actionCard_Overview
             << ui->actionScenario_Overview
-            << ui->actionAbout
-            << ui->actionAcknowledgement;
+            << ui->actionAbout;
 
     foreach (QAction *action, actions)
         start_scene->addButton(action);
@@ -157,7 +155,8 @@ void MainWindow::on_actionExit_triggered() {
 
 void MainWindow::on_actionStart_Server_triggered() {
     ServerDialog *dialog = new ServerDialog(this);
-    if (!dialog->config())
+    int accept_type = dialog->config();
+    if (accept_type == 0)
         return;
 
     Server *server = new Server(this);
@@ -166,16 +165,23 @@ void MainWindow::on_actionStart_Server_triggered() {
         return;
     }
 
-    server->daemonize();
+    if (accept_type == 1) {
+        server->daemonize();
 
-    ui->actionStart_Game->disconnect();
-    connect(ui->actionStart_Game, SIGNAL(triggered()), this, SLOT(startGameInAnotherInstance()));
+        ui->actionStart_Game->disconnect();
+        connect(ui->actionStart_Game, SIGNAL(triggered()), this, SLOT(startGameInAnotherInstance()));
 
-    StartScene *start_scene = qobject_cast<StartScene *>(scene);
-    if (start_scene) {
-        start_scene->switchToServer(server);
-        if (Config.value("EnableMinimizeDialog", false).toBool())
-            this->on_actionMinimize_to_system_tray_triggered();
+        StartScene *start_scene = qobject_cast<StartScene *>(scene);
+        if (start_scene) {
+            start_scene->switchToServer(server);
+            if (Config.value("EnableMinimizeDialog", false).toBool())
+                this->on_actionMinimize_to_system_tray_triggered();
+        }
+    } else {
+        server->createNewRoom();
+
+        Config.HostAddress = "127.0.0.1";
+        startConnection();
     }
 }
 
@@ -306,6 +312,18 @@ void MainWindow::enterRoom() {
 
 void MainWindow::gotoStartScene() {
     ServerInfo.DuringGame = false;
+    delete systray;
+    systray = NULL;
+    if (ClientInstance) {
+        ClientInstance->disconnectFromHost();
+        if (Self) {
+            delete Self;
+            Self = NULL;
+        }
+        delete ClientInstance;
+        ClientInstance = NULL;
+    }
+
     QList<Server *> servers = findChildren<Server *>();
     if (!servers.isEmpty())
         servers.first()->deleteLater();
@@ -315,14 +333,12 @@ void MainWindow::gotoStartScene() {
     QList<QAction *> actions;
     actions << ui->actionStart_Game
             << ui->actionStart_Server
-            << ui->actionPC_Console_Start
             << ui->actionReplay
             << ui->actionConfigure
             << ui->actionGeneral_Overview
             << ui->actionCard_Overview
             << ui->actionScenario_Overview
-            << ui->actionAbout
-            << ui->actionAcknowledgement;
+            << ui->actionAbout;
 
     foreach (QAction *action, actions)
         start_scene->addButton(action);
@@ -339,16 +355,6 @@ void MainWindow::gotoStartScene() {
 
     addAction(ui->actionShow_Hide_Menu);
     addAction(ui->actionFullscreen);
-
-    delete systray;
-    systray = NULL;
-    if (ClientInstance) {
-        if (Self) {
-            delete Self;
-            Self = NULL;
-        }
-        delete ClientInstance;
-    }
 }
 
 void MainWindow::startGameInAnotherInstance() {
@@ -383,19 +389,16 @@ void MainWindow::on_actionNever_nullify_my_trick_toggled(bool checked) {
 
 void MainWindow::on_actionAbout_triggered() {
     // Cao Cao's pixmap
-    QString content =  "<center><img src='image/system/shencc.png'> <br /> </center>";
+    QString content =  "<center> <br/> <img src='image/system/shencc.png'> <br/> </center>";
 
     // Cao Cao' poem
-    QString poem = tr("Disciples dressed in blue, my heart worries for you. You are the cause, of this song without pause");
+    QString poem = tr("Disciples dressed in blue, my heart worries for you. You are the cause, of this song without pause <br/>"
+                      "\"A Short Song\" by Cao Cao");
     content.append(QString("<p align='right'><i>%1</i></p>").arg(poem));
-
-    // Cao Cao's signature
-    QString signature = tr("\"A Short Song\" by Cao Cao");
-    content.append(QString("<p align='right'><i>%1</i></p>").arg(signature));
 
     QString email = "moligaloo@gmail.com";
     content.append(tr("This is the open source clone of the popular <b>Sanguosha</b> game,"
-                      "totally written in C++ Qt GUI framework <br />"
+                      "totally written in C++ Qt GUI framework <br/>"
                       "My Email: <a href='mailto:%1' style = \"color:#0072c1; \">%1</a> <br/>"
                       "My QQ: 365840793 <br/>"
                       "My Weibo: http://weibo.com/moligaloo <br/>").arg(email));
@@ -423,7 +426,7 @@ void MainWindow::on_actionAbout_triggered() {
     QString forum_url = "http://qsanguosha.org";
     content.append(tr("Forum: <a href='%1' style = \"color:#0072c1; \">%1</a> <br/>").arg(forum_url));
 
-    Window *window = new Window(tr("About QSanguosha"), QSize(420, 450));
+    Window *window = new Window(tr("About QSanguosha"), QSize(420, 470));
     scene->addItem(window);
     window->setZValue(32766);
 
@@ -614,24 +617,6 @@ void MainWindow::on_actionAcknowledgement_triggered() {
     window->appear();
 }
 
-void MainWindow::on_actionPC_Console_Start_triggered() {
-    ServerDialog *dialog = new ServerDialog(this);
-    dialog->ensureEnableAI();
-    if (!dialog->config())
-        return;
-
-    Server *server = new Server(this);
-    if (!server->listen()) {
-        QMessageBox::warning(this, tr("Warning"), tr("Can not start server!"));
-        return;
-    }
-
-    server->createNewRoom();
-
-    Config.HostAddress = "127.0.0.1";
-    startConnection();
-}
-
 #include <QGroupBox>
 #include <QToolButton>
 #include <QCommandLinkButton>
@@ -648,27 +633,35 @@ void MainWindow::on_actionReplay_file_convert_triggered() {
         return;
 
     QFile file(filename);
+    bool success = false;
     if (file.open(QIODevice::ReadOnly)) {
         QFileInfo info(filename);
         QString tosave = info.absoluteDir().absoluteFilePath(info.baseName());
+        QString suffix = filename.right(4).toLower();
 
-        if (filename.endsWith(".txt")) {
+        if (suffix == ".txt") {
             tosave.append(".png");
 
             // txt to png
             Recorder::TXT2PNG(file.readAll()).save(tosave);
-
-        } else if (filename.endsWith(".png")) {
+            success = true;
+        } else if (suffix == ".png") {
             tosave.append(".txt");
 
             // png to txt
-            QByteArray data = Replayer::PNG2TXT(filename);
+            QByteArray data = Recorder::PNG2TXT(filename);
 
             QFile tosave_file(tosave);
-            if (tosave_file.open(QIODevice::WriteOnly))
+            if (!data.isEmpty() && tosave_file.open(QIODevice::WriteOnly)) {
                 tosave_file.write(data);
+                success = true;
+            }
         }
     }
+    if (!success)
+        QMessageBox::warning(this, tr("Replay file convert"), tr("Conversion failed!"));
+    else
+        QMessageBox::warning(this, tr("Replay file convert"), tr("Conversion done!"));
 }
 
 void MainWindow::on_actionRecord_analysis_triggered() {

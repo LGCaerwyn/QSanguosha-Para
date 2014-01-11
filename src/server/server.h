@@ -55,6 +55,7 @@ private:
     QStringList ban_list;
     QPushButton *add2nd;
     QMap<QString, QStringList> banned_items;
+    QLineEdit *card_to_ban;
 
 private slots:
     void addGeneral(const QString &name);
@@ -73,8 +74,7 @@ class ServerDialog: public QDialog {
 
 public:
     ServerDialog(QWidget *parent);
-    void ensureEnableAI();
-    bool config();
+    int config();
 
 private:
     QWidget *createBasicTab();
@@ -146,10 +146,13 @@ private:
     QButtonGroup *extension_group;
     QButtonGroup *mode_group;
 
+    int accept_type; // -1 means console start while 1 means server start
+
 private slots:
     void setMaxHpSchemeBox();
 
-    void onOkButtonClicked();
+    void onConsoleButtonClicked();
+    void onServerButtonClicked();
     void onDetectButtonClicked();
     void select3v3Generals();
     void edit1v1Banlist();

@@ -31,7 +31,7 @@ static QLayout *HLay(QWidget *left, QWidget *right) {
 }
 
 ServerDialog::ServerDialog(QWidget *parent)
-    : QDialog(parent)
+    : QDialog(parent), accept_type(0)
 {
     setWindowTitle(tr("Start server"));
 
@@ -419,10 +419,6 @@ QWidget *ServerDialog::createMiscTab() {
     return widget;
 }
 
-void ServerDialog::ensureEnableAI() {
-    ai_enable_checkbox->setChecked(true);
-}
-
 void ServerDialog::updateButtonEnablility(QAbstractButton *button) {
     if (!button) return;
     if (button->objectName().contains("scenario")
@@ -448,16 +444,17 @@ void ServerDialog::updateButtonEnablility(QAbstractButton *button) {
 void BanlistDialog::switchTo(int item) {
     this->item = item;
     list = lists.at(item);
-    if (add2nd) add2nd->setVisible((list->objectName()=="Pairs"));
+    if (add2nd) add2nd->setVisible((list->objectName() == "Pairs"));
 }
 
 BanlistDialog::BanlistDialog(QWidget *parent, bool view)
-    : QDialog(parent), add2nd(NULL)
+    : QDialog(parent), add2nd(NULL), card_to_ban(NULL)
 {
     setWindowTitle(tr("Select generals that are excluded"));
+    setMinimumWidth(455);
 
     if (ban_list.isEmpty())
-        ban_list << "Roles" << "1v1" << "HulaoPass" << "XMode" << "Basara" << "Hegemony" << "Pairs";
+        ban_list << "Roles" << "1v1" << "HulaoPass" << "XMode" << "Basara" << "Hegemony" << "Pairs" << "Cards";
     QVBoxLayout *layout = new QVBoxLayout;
 
     QTabWidget *tab = new QTabWidget;
@@ -465,42 +462,37 @@ BanlistDialog::BanlistDialog(QWidget *parent, bool view)
     connect(tab, SIGNAL(currentChanged(int)), this, SLOT(switchTo(int)));
 
     foreach (QString item, ban_list) {
-        if (item == "Pairs") continue;
         QWidget *apage = new QWidget;
 
         list = new QListWidget;
         list->setObjectName(item);
 
-        QStringList banlist = Config.value(QString("Banlist/%1").arg(item)).toStringList();
-        foreach (QString name, banlist)
-            addGeneral(name);
+        if (item == "Pairs") {
+            foreach (QString banned, BanPair::getAllBanSet().toList())
+                addGeneral(banned);
+            foreach (QString banned, BanPair::getSecondBanSet().toList())
+                add2ndGeneral(banned);
+            foreach (BanPair pair, BanPair::getBanPairSet().toList())
+                addPair(pair.first, pair.second);
+        } else {
+            QStringList banlist = Config.value(QString("Banlist/%1").arg(item)).toStringList();
+            foreach (QString name, banlist)
+                addGeneral(name);
+        }
 
         lists << list;
 
         QVBoxLayout *vlay = new QVBoxLayout;
         vlay->addWidget(list);
+        if (item == "Cards" && !view) {
+            vlay->addWidget(new QLabel(tr("Input card pattern to ban:"), this));
+            card_to_ban = new QLineEdit(this);
+            vlay->addWidget(card_to_ban);
+        }
         apage->setLayout(vlay);
 
         tab->addTab(apage, Sanguosha->translate(item));
     }
-
-    QWidget *apage = new QWidget;
-
-    list = new QListWidget;
-    list->setObjectName("Pairs");
-    this->list = list;
-    foreach (QString banned, BanPair::getAllBanSet().toList())
-        addGeneral(banned);
-    foreach (QString banned, BanPair::getSecondBanSet().toList())
-        add2ndGeneral(banned);
-    foreach (BanPair pair, BanPair::getBanPairSet().toList())
-        addPair(pair.first, pair.second);
-
-    QVBoxLayout *vlay = new QVBoxLayout;
-    vlay->addWidget(list);
-    apage->setLayout(vlay);
-    tab->addTab(apage, Sanguosha->translate("Pairs"));
-    lists << list;
 
     QPushButton *add = new QPushButton(tr("Add ..."));
     QPushButton *remove = new QPushButton(tr("Remove"));
@@ -529,9 +521,11 @@ BanlistDialog::BanlistDialog(QWidget *parent, bool view)
     setLayout(layout);
 
     foreach (QListWidget *alist, lists) {
-        if (alist->objectName() == "Pairs") continue;
+        if (alist->objectName() == "Pairs" || alist->objectName() == "Cards")
+            continue;
         alist->setViewMode(QListView::IconMode);
         alist->setDragDropMode(QListView::NoDragDrop);
+        alist->setResizeMode(QListView::Adjust);
     }
 }
 
@@ -541,6 +535,12 @@ void BanlistDialog::addGeneral(const QString &name) {
         banned_items["Pairs"].append(name);
         QString text = QString(tr("Banned for all: %1")).arg(Sanguosha->translate(name));
         QListWidgetItem *item = new QListWidgetItem(text);
+        item->setData(Qt::UserRole, QVariant::fromValue(name));
+        list->addItem(item);
+    } else if (list->objectName() == "Cards") {
+        if (banned_items["Cards"].contains(name)) return;
+        banned_items["Cards"].append(name);
+        QListWidgetItem *item = new QListWidgetItem(name);
         item->setData(Qt::UserRole, QVariant::fromValue(name));
         list->addItem(item);
     } else {
@@ -579,11 +579,21 @@ void BanlistDialog::addPair(const QString &first, const QString &second) {
 }
 
 void BanlistDialog::doAddButton() {
-    FreeChooseDialog *chooser = new FreeChooseDialog(this,
-                                                     (list->objectName() == "Pairs") ? FreeChooseDialog::Pair : FreeChooseDialog::Multi);
-    connect(chooser, SIGNAL(general_chosen(QString)), this, SLOT(addGeneral(QString)));
-    connect(chooser, SIGNAL(pair_chosen(QString, QString)), this, SLOT(addPair(QString, QString)));
-    chooser->exec();
+    if (list->objectName() == "Cards") {
+        QString pattern;
+        if (card_to_ban) {
+            pattern = card_to_ban->text();
+            card_to_ban->clear();
+        }
+        if (!pattern.isEmpty())
+            addGeneral(pattern);
+    } else {
+        FreeChooseDialog *chooser = new FreeChooseDialog(this,
+                                                         (list->objectName() == "Pairs") ? FreeChooseDialog::Pair : FreeChooseDialog::Multi);
+        connect(chooser, SIGNAL(general_chosen(QString)), this, SLOT(addGeneral(QString)));
+        connect(chooser, SIGNAL(pair_chosen(QString, QString)), this, SLOT(addPair(QString, QString)));
+        chooser->exec();
+    }
 }
 
 void BanlistDialog::doAdd2ndButton() {
@@ -594,8 +604,10 @@ void BanlistDialog::doAdd2ndButton() {
 
 void BanlistDialog::doRemoveButton() {
     int row = list->currentRow();
-    if (row != -1)
+    if (row != -1) {
+        banned_items[list->objectName()].removeOne(list->item(row)->data(Qt::UserRole).toString());
         delete list->takeItem(row);
+    }
 }
 
 void BanlistDialog::save() {
@@ -877,13 +889,16 @@ QLayout *ServerDialog::createButtonLayout() {
     QHBoxLayout *button_layout = new QHBoxLayout;
     button_layout->addStretch();
 
-    QPushButton *ok_button = new QPushButton(tr("OK"));
+    QPushButton *console_button = new QPushButton(tr("PC Console Start"));
+    QPushButton *server_button = new QPushButton(tr("Start Server"));
     QPushButton *cancel_button = new QPushButton(tr("Cancel"));
 
-    button_layout->addWidget(ok_button);
+    button_layout->addWidget(console_button);
+    button_layout->addWidget(server_button);
     button_layout->addWidget(cancel_button);
 
-    connect(ok_button, SIGNAL(clicked()), this, SLOT(onOkButtonClicked()));
+    connect(console_button, SIGNAL(clicked()), this, SLOT(onConsoleButtonClicked()));
+    connect(server_button, SIGNAL(clicked()), this, SLOT(onServerButtonClicked()));
     connect(cancel_button, SIGNAL(clicked()), this, SLOT(reject()));
 
     return button_layout;
@@ -901,7 +916,13 @@ void ServerDialog::onDetectButtonClicked() {
     }
 }
 
-void ServerDialog::onOkButtonClicked() {
+void ServerDialog::onConsoleButtonClicked() {
+    accept_type = -1;
+    accept();
+}
+
+void ServerDialog::onServerButtonClicked() {
+    accept_type = 1;
     accept();
 }
 
@@ -1020,11 +1041,11 @@ void ServerDialog::select3v3Generals() {
     dialog->exec();
 }
 
-bool ServerDialog::config() {
+int ServerDialog::config() {
     exec();
 
     if (result() != Accepted)
-        return false;
+        return 0;
 
     Config.ServerName = server_name_edit->text();
     Config.OperationTimeout = timeout_spinbox->value();
@@ -1142,7 +1163,7 @@ bool ServerDialog::config() {
     Config.BanPackages = ban_packages.toList();
     Config.setValue("BanPackages", Config.BanPackages);
 
-    return true;
+    return accept_type;
 }
 
 Server::Server(QObject *parent)
