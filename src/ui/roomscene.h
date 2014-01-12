@@ -124,6 +124,7 @@ public:
     void showPromptBox();
     static void FillPlayerNames(QComboBox *ComboBox, bool add_none);
     void updateTable();
+    void updateVolumeConfig();
     inline QMainWindow *mainWindow() { return main_window; }
 
     inline bool isCancelButtonEnabled() const{ return cancel_button != NULL && cancel_button->isEnabled(); }
@@ -171,6 +172,9 @@ public slots:
     void doOkButton();
     void doCancelButton();
     void doDiscardButton();
+
+    void setChatBoxVisibleSlot();
+    void pause();
     
 protected:    
     virtual void mousePressEvent(QGraphicsSceneMouseEvent *event);
@@ -314,6 +318,9 @@ private:
     int _m_currentStage;
 
     QRectF _m_infoPlane;
+
+    bool _m_bgEnabled;
+    QString _m_bgMusicPath;
 
 private slots:
     void fillCards(const QList<int> &card_ids, const QList<int> &disabled_ids = QList<int>());

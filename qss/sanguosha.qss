@@ -13,7 +13,7 @@ QTextEdit {
     background-color: rgba(43, 45, 31, 120);
 }
 
-QTextEdit[description = "true"] {
+QTextEdit[description = true] {
     border: 10px;
     border-image: none;
     background-color: rgba(255, 255, 255, 255);
@@ -32,13 +32,13 @@ QLineEdit#chat_edit {
     border-image: url(image/system/border.png) 10 10 10 10;
 }
 
-QMenu[private_pile = "true"] {
+QMenu[private_pile = true] {
     background-color: rgba(43, 63, 53, 200);
     border-radius: 5px;
     color: white;
 }
 
-QPushButton[private_pile = "true"] {
+QPushButton[private_pile = true] {
     background-color: rgba(43, 63, 53, 200);
     border-radius: 5px;
     color: white;
