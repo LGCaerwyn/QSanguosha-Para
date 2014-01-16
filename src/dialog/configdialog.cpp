@@ -71,10 +71,13 @@ ConfigDialog::~ConfigDialog() {
 void ConfigDialog::on_browseBgButton_clicked() {
     QString filename = QFileDialog::getOpenFileName(this,
                                                     tr("Select a background image"),
-                                                    "backdrop/",
+                                                    "image/system/backdrop/",
                                                     tr("Images (*.png *.bmp *.jpg)"));
 
     if (!filename.isEmpty()) {
+        QString app_path = QApplication::applicationDirPath();
+        if (filename.startsWith(app_path))
+            filename = filename.right(filename.length() - app_path.length() - 1);
         ui->bgPathLineEdit->setText(filename);
 
         Config.BackgroundImage = filename;
@@ -87,7 +90,7 @@ void ConfigDialog::on_browseBgButton_clicked() {
 void ConfigDialog::on_resetBgButton_clicked() {
     ui->bgPathLineEdit->clear();
 
-    QString filename = "backdrop/default.jpg";
+    QString filename = "image/system/backdrop/default.jpg";
     Config.BackgroundImage = filename;
     Config.setValue("BackgroundImage", filename);
 
@@ -140,6 +143,9 @@ void ConfigDialog::on_browseBgMusicButton_clicked() {
                                                     "audio/system",
                                                     tr("Audio files (*.wav *.mp3 *.ogg)"));
     if (!filename.isEmpty()) {
+        QString app_path = QApplication::applicationDirPath();
+        if (filename.startsWith(app_path))
+            filename = filename.right(filename.length() - app_path.length() - 1);
         ui->bgMusicPathLineEdit->setText(filename);
         Config.setValue("BackgroundMusic", filename);
     }

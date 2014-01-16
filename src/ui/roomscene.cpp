@@ -366,6 +366,8 @@ RoomScene::RoomScene(QMainWindow *main_window)
 
     pindian_from_card = NULL;
     pindian_to_card = NULL;
+
+    _m_bgEnabled = false;
 }
 
 void RoomScene::handleGameEvent(const Json::Value &arg) {
@@ -3473,7 +3475,7 @@ void KOFOrderBox::killPlayer(const QString &general_name) {
 
 void RoomScene::onGameStart() {
     main_window->activateWindow();
-    if (Config.GameMode.contains("_mini_")) {
+    if (ServerInfo.GameMode.contains("_mini_")) {
         QString id = Config.GameMode;
         id.replace("_mini_", "");
         _m_currentStage = id.toInt();
@@ -3550,13 +3552,7 @@ void RoomScene::moveFocus(const QStringList &players, Countdown countdown) {
 }
 
 void RoomScene::setEmotion(const QString &who, const QString &emotion) {
-    bool permanent = false;
-    if (emotion == "question" || emotion == "no-question")
-        permanent = true;
-    setEmotion(who, emotion, permanent);
-}
-
-void RoomScene::setEmotion(const QString &who, const QString &emotion, bool permanent) {
+    bool permanent = (emotion == "question" || emotion == "no-question");
     if (emotion.startsWith("weapon/") || emotion.startsWith("armor/")) {
         if (Config.value("NoEquipAnim", false).toBool()) return;
         QString name = emotion.split("/").last();
@@ -4331,6 +4327,7 @@ void RoomScene::pause() {
 }
 
 void RoomScene::updateVolumeConfig() {
+    if (!game_started) return;
     if (Config.EnableBgMusic) {
         // start playing background music
         QString bgMusicPath = Config.value("BackgroundMusic", "audio/system/background.ogg").toString();
