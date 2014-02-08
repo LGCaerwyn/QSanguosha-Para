@@ -13,15 +13,20 @@ Skill::Skill(const QString &name, Frequency frequency)
     : frequency(frequency), limit_mark(QString()), default_choice("no"), attached_lord_skill(false)
 {
     static QChar lord_symbol('$');
+    static QChar attached_lord_symbol('&');
 
     if (name.endsWith(lord_symbol)) {
         QString copy = name;
         copy.remove(lord_symbol);
         setObjectName(copy);
         lord_skill = true;
+    } if (name.endsWith(attached_lord_symbol)) {
+        QString copy = name;
+        copy.remove(attached_lord_symbol);
+        setObjectName(copy);
+        attached_lord_skill = true;
     } else {
         setObjectName(name);
-        lord_skill = false;
     }
 }
 
@@ -78,10 +83,6 @@ void Skill::initMediaSource() {
         if (QFile::exists(effect_file))
             sources << effect_file;
     }
-}
-
-Skill::Location Skill::getLocation() const{
-    return parent() ? Right : Left;
 }
 
 void Skill::playAudioEffect(int index, bool superpose) const{

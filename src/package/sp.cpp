@@ -1422,13 +1422,15 @@ public:
         return target != NULL;
     }
 
-    virtual bool trigger(TriggerEvent, Room *, ServerPlayer *player, QVariant &data) const{
+    virtual bool trigger(TriggerEvent, Room *room, ServerPlayer *player, QVariant &data) const{
         JudgeStar judge = data.value<JudgeStar>();
         int id = judge->card->getEffectiveId();
         PlayerStar zhangbao = player->tag["ZhoufuSource" + QString::number(id)].value<PlayerStar>();
         if (zhangbao && TriggerSkill::triggerable(zhangbao)
-            && zhangbao->askForSkillInvoke(objectName(), data))
+            && zhangbao->askForSkillInvoke(objectName(), data)) {
+            room->broadcastSkillInvoke(objectName());
             zhangbao->drawCards(2);
+        }
         return false;
     }
 };
@@ -1499,7 +1501,8 @@ public:
                         room->broadcastSkillInvoke(objectName());
                         player->drawCards(1);
                     }
-                    break;
+                    if (move.reason.m_reason != CardMoveReason::S_REASON_RULEDISCARD)
+                        break;
                 }
             }
         }
