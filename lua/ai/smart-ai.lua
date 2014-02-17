@@ -10,7 +10,7 @@ math.randomseed(os.time())
 -- SmartAI is the base class for all other specialized AI classes
 SmartAI = class "SmartAI"
 
-version = "QSanguosha AI 20140101 (V1.4 Alpha)"
+version = "QSanguosha AI 20140201 (V1.41 Alpha)"
 --- this function is only function that exposed to the host program
 --- and it clones an AI instance by general name
 -- @param player The ServerPlayer object that want to create the AI object
@@ -75,6 +75,10 @@ sgs.card_lack = {}
 sgs.ai_need_damaged = {}
 sgs.ai_debug_func = {}
 sgs.ai_event_callback = {}
+sgs.ai_defense = {
+	Normal = {},
+	Process = {}
+}
 
 for i = sgs.NonTrigger, sgs.NumOfEvents, 1 do
 	sgs.ai_event_callback[i] = {}
@@ -215,9 +219,15 @@ function sgs.getValue(player)
 	return player:getHp() * 2 + player:getHandcardNum()
 end
 
-function sgs.getDefense(player, gameProcess)
+function sgs.getDefense(player, gameProcess, update)
 	if not player then return 0 end
-	local defense = math.min(sgs.getValue(player), player:getHp() * 3)
+
+	local defenseType = gameProcess and "Process" or "Normal"
+	if not update and global_room:getCurrent() then
+		return sgs.ai_defense[defenseType][player:objectName()] or 0
+	end
+
+	local defense = math.min(player:getHp() * 2 + player:getHandcardNum(), player:getHp() * 3)
 	local attacker = global_room:getCurrent()
 	local hasEightDiagram = false
 	if player:hasArmorEffect("eight_diagram") or player:hasArmorEffect("bazhen") then
@@ -273,10 +283,6 @@ function sgs.getDefense(player, gameProcess)
 		if sgs.isLordInDanger() then defense = defense - 0.7 end
 	end
 
-	if not gameProcess and (sgs.ai_chaofeng[player:getGeneralName()] or 0) >= 3 then
-		defense = defense - math.max(6, (sgs.ai_chaofeng[player:getGeneralName()] or 0)) * 0.035
-	end
-
 	if not player:faceUp() then defense = defense - 0.35 end
 	if player:containsTrick("indulgence") and not player:containsTrick("YanxiaoCard") then defense = defense - 0.15 end
 	if player:containsTrick("supply_shortage") and not player:containsTrick("YanxiaoCard") then defense = defense - 0.15 end
@@ -290,7 +296,8 @@ function sgs.getDefense(player, gameProcess)
 		if player:hasSkills("noslijian|lijian") then defense = defense - 2.2 end
 		if player:hasSkill("nosmiji") and player:isWounded() then defense = defense - 1.5 end
 	end
-	defense = defense + player:getHandcardNum() * 0.25
+
+	sgs.ai_defense[defenseType][player:objectName()] = defense
 	return defense
 end
 
@@ -959,7 +966,10 @@ sgs.ai_card_intention.general = function(from, to, level)
 		end
 		sgs.role_evaluation[from:objectName()]["loyalist"] = sgs.role_evaluation[from:objectName()]["loyalist"] + level
 	end
-	sgs.evaluateAlivePlayersRole()
+
+	for _, p in sgs.qlist(global_room:getAllPlayers()) do
+		sgs.ais[p:objectName()]:updatePlayers(true, p:isLord())
+	end
 	sgs.outputRoleValues(from, level)
 end
 
@@ -1147,7 +1157,7 @@ function SmartAI:objectiveLevel(player)
 			local process = sgs.gameProcess(self.room)
 			if process == "neutral" or (sgs.turncount <= 1 and sgs.isLordHealthy()) then
 				if sgs.turncount <= 1 and sgs.isLordHealthy() then
-					if self:getOverflow() <= 0 then return 0 end
+					if self:getOverflow() <= -1 then return 0 end
 					local rebelish = (sgs.current_mode_players["loyalist"] + 1 < sgs.current_mode_players["rebel"])
 					if player:isLord() then return rebelish and -1 or 0 end
 					if target_role == "loyalist" then return rebelish and 0 or 3.5
@@ -1163,7 +1173,7 @@ function SmartAI:objectiveLevel(player)
 				end
 				return 3
 			elseif process:match("rebel") then
-				return target_role == "rebel" and 5 or -1
+				return target_role == "rebel" and 5 or (target_role == "neutral" and 0 or -1)
 			elseif process:match("dilemma") then
 				if target_role == "rebel" then return 5
 				elseif target_role == "loyalist" or target_role == "renegade" then return 0
@@ -1207,6 +1217,9 @@ function SmartAI:objectiveLevel(player)
 				elseif current_enemy_num + (consider_renegade and current_renegade_num or rebelish and 0 or current_renegade_num)
 						>= rebel_num + (consider_renegade and renegade_num or (rebelish and 0 or renegade_num)) then
 					return -1
+				elseif self:getOverflow() > -1 and (current_friend_num + ((consider_renegade or rebelish) and current_renegade_num or 0) + 1
+						== loyal_num + ((rebelish or consider_renegade) and renegade_num or 0) + 1) and current_enemy_num <= 1 then
+					return 1
 				end
 			else
 				local explicit_renegade = 0
@@ -1296,6 +1309,9 @@ function SmartAI:objectiveLevel(player)
 			elseif current_enemy_num + (consider_renegade and current_renegade_num or loyalish and 0 or current_renegade_num)
 					>= loyal_num + (consider_renegade and renegade_num or (loyalish and 0 or renegade_num)) + 1 then
 				return -2
+			elseif self:getOverflow() > -1 and (current_friend_num + ((consider_renegade or loyalish) and current_renegade_num or 0) + 1
+					== rebel_num + ((consider_renegade or loyalish) and renegade_num or 0)) and current_enemy_num <= 1 then
+				return 1
 			else
 				return 0
 			end
@@ -1431,6 +1447,9 @@ function SmartAI:updatePlayers(clear_flags)
 		return
 	end
 
+	self:updateAlivePlayerRoles()
+	sgs.evaluateAlivePlayersRole()
+
 	self.enemies = {}
 	self.friends = {}
 	self.friends_noself = {}
@@ -1449,9 +1468,12 @@ function SmartAI:updatePlayers(clear_flags)
 	end
 	table.insert(self.friends, self.player)
 
-	if sgs.isRolePredictable() then return end
-	self:updateAlivePlayerRoles()
-	sgs.evaluateAlivePlayersRole()
+	if update then
+		for _, p in sgs.qlist(self.room:getAlivePlayers()) do
+			sgs.getDefense(p, true, true)
+			sgs.getDefense(p, false, true)
+		end
+	end
 end
 
 function sgs.evaluateAlivePlayersRole()
@@ -1657,10 +1679,10 @@ function SmartAI:filterEvent(triggerEvent, player, data)
 				end
 			end
 		end
-	elseif triggerEvent == sgs.CardUsed or triggerEvent == sgs.CardEffected or triggerEvent == sgs.GameStart or triggerEvent == sgs.EventPhaseStart then
-		self:updatePlayers()
-	elseif triggerEvent == sgs.BuryVictim or triggerEvent == sgs.HpChanged or triggerEvent == sgs.MaxHpChanged then
-		self:updatePlayers(false)
+	elseif event == sgs.CardUsed or event == sgs.GameStart or event == sgs.EventPhaseStart then
+		self:updatePlayers(true, self == sgs.recorder)
+	elseif event == sgs.BuryVictim or event == sgs.HpChanged or event == sgs.MaxHpChanged then
+		self:updatePlayers(false, self == sgs.recorder)
 	end
 
 	if triggerEvent == sgs.BuryVictim then
@@ -1952,7 +1974,6 @@ function SmartAI:filterEvent(triggerEvent, player, data)
 							and not has_slash_prohibit_skill and sgs.isGoodTarget(target, self.enemies, self) then
 							if is_neutral then
 								sgs.updateIntention(player, target, -35)
-								self:updatePlayers()
 							end
 						end
 					end
@@ -1964,7 +1985,6 @@ function SmartAI:filterEvent(triggerEvent, player, data)
 							local aplayer = self:exclude({ target }, card, player)
 							if #aplayer == 1 and is_neutral then
 								sgs.updateIntention(player, target, -35)
-								self:updatePlayers()
 							end
 						end
 					end
@@ -1977,7 +1997,6 @@ function SmartAI:filterEvent(triggerEvent, player, data)
 							local aplayer = self:exclude({ target }, card, player)
 							if #aplayer == 1 and is_neutral then
 								sgs.updateIntention(player, target, -35)
-								self:updatePlayers()
 							end
 						end
 					end

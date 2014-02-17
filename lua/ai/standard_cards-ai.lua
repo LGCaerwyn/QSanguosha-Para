@@ -418,7 +418,7 @@ function SmartAI:findWeaponToUse(enemy)
 	end
 	if not hasweapon then return end
 	if self.player:getWeapon() then weaponvalue[self.player:getWeapon()] = self:evaluateWeapon(self.player:getWeapon(), self.player, enemy) end
-	local max_value, max_card = -10
+	local max_value, max_card = -1000
 	for c, v in pairs(weaponvalue) do
 		if v > max_value then max_card = c max_value = v end
 	end
@@ -528,6 +528,16 @@ function SmartAI:useCardSlash(card, use)
 			and not canliuli
 			and not (not self:isWeak(target) and #self.enemies > 1 and #self.friends > 1 and self.player:hasSkill("keji")
 			and self:getOverflow() > 0 and not self:hasCrossbowEffect()) then
+
+			if target:getHp() > 1 and target:hasSkill("jianxiong") and card:getSkillName() == "spear" then
+				local ids, isGood = card:getSubcards(), true
+				for _, id in sgs.qlist(ids) do
+					local c = sgs.Sanguosha:getCard(id)
+					if isCard("Peach", c, target) or isCard("Analeptic", c, target) then isGood = false break end
+				end
+				if not isGood then continue end
+			end
+ 
 			-- fill the card use struct
 			local usecard = card
 			if not use.to or use.to:isEmpty() then
@@ -840,6 +850,10 @@ sgs.ai_skill_cardask["slash-jink"] = function(self, data, pattern, target)
 				and not self.player:hasSkills("tuntian+zaoxian") and not self:willSkipPlayPhase() then
 				return "."
 			end
+		end
+		if self.player:getHp() > 1 and getKnownCard(target, self.player, "Slash") >= 1 and getKnownCard(target, self.player, "Analeptic") >= 1 and self:getCardsNum("Jink") == 1
+			and (target:getPhase() < sgs.Player_Play or (self:slashIsAvailable(target) and target:canSlash(self.player))) then
+			return "."
 		end
 		if not (target:hasSkill("nosqianxi") and target:distanceTo(self.player) == 1) then
 			if target:hasWeapon("axe") then
@@ -1839,7 +1853,7 @@ function SmartAI:getValuableCard(who)
 
 	local equips = sgs.QList2Table(who:getEquips())
 	for _, equip in ipairs(equips) do
-		if who:hasSkills("longhun|guose|yanxiao") and not equip:getSuit() == sgs.Card_Diamond then return equip:getEffectiveId() end
+		if who:hasSkills("longhun|guose|yanxiao") and equip:getSuit() ~= sgs.Card_Diamond then return equip:getEffectiveId() end
 		if who:hasSkills("qixi|yinling|guidao|duanliang") and equip:isBlack() then return equip:getEffectiveId() end
 		if who:hasSkill("jijiu|wusheng|xueji|nosfuhun") and equip:isRed() then return equip:getEffectiveId() end
 		if who:hasSkill("baobian") and who:getHp() <= 2 then return  equip:getEffectiveId() end
@@ -2426,7 +2440,7 @@ sgs.ai_skill_cardask["collateral-slash"] = function(self, data, pattern, target,
 				return slash:toString()
 			end
 		end
-		if (target:getHp() > 2 or getCardsNum("Jink", target, self.player) > 1) and not target:getRole() == "lord" and self.player:getHandcardNum() > 1 then
+		if (target:getHp() > 2 or getCardsNum("Jink", target, self.player) > 1) and target:getRole() ~= "lord" and self.player:getHandcardNum() > 1 then
 			for _, slash in ipairs(self:getCards("Slash")) do
 				return slash:toString()
 			end

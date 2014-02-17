@@ -103,7 +103,8 @@ function sgs.ai_armor_value.vine(player, self)
 		return player:hasSkill("kongcheng") and 5 or 3.8
 	end
 	if player:hasSkills(sgs.lose_equip_skill) then return 3.8 end
-	return 3.5
+	if player:hasSkill("xiansi") and player:getPile("counter"):length() > 1 then return 3.5 end
+	return 3
 end
 
 function SmartAI:useCardAnaleptic(card, use)
@@ -419,7 +420,7 @@ function SmartAI:useCardIronChain(card, use)
 		if self:getOverflow() <= 0 and self.player:hasSkill("manjuan") then return end
 		if self.player:hasSkill("wumou") and self.player:getMark("@wrath") < 7 then return end
 	end
-	local friendtargets = {}
+	local friendtargets, friendtargets2 = {}, {}
 	local otherfriends = {}
 	local enemytargets = {}
 	local yangxiu = self.room:findPlayerBySkillName("danlao")
@@ -428,11 +429,16 @@ function SmartAI:useCardIronChain(card, use)
 	for _, friend in ipairs(self.friends) do
 		if use.current_targets and table.contains(use.current_targets, friend:objectName()) then continue end
 		if friend:isChained() and not self:isGoodChainPartner(friend) and self:hasTrickEffective(card, friend) and not friend:hasSkill("danlao") then
-			table.insert(friendtargets, friend)
+			if friend:containsTrick("lightning") then
+				table.insert(friendtargets, friend)
+			else
+				table.insert(friendtargets2, friend)
+			end
 		else
 			table.insert(otherfriends, friend)
 		end
 	end
+	table.insertTable(friendtargets, friendtargets2)
 	if not (liuxie and self:isEnemy(liuxie)) then
 		self:sort(self.enemies, "defense")
 		for _, enemy in ipairs(self.enemies) do

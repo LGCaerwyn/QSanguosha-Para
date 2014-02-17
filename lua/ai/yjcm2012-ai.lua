@@ -364,6 +364,16 @@ gongqi_skill.getTurnUseCard = function(self, inclusive)
 end
 
 sgs.ai_skill_use_func.GongqiCard = function(card, use, self)
+	local id = card:getSubcards():first()
+	local subcard = sgs.Sanguosha:getCard(id)
+	if subcard:isKindOf("SilverLion") and room:getCardPlace(id) == sgs.Player_PlaceHand then
+		local dummy_use = { isDummy = true }
+		self:useEquipCard(subcard, dummy_use)
+		if dummy_use.card then
+			use.card = subcard
+			return
+		end
+	end
 	use.card = card
 end
 
@@ -387,10 +397,13 @@ sgs.ai_skill_use_func.JiefanCard = function(card, use, self)
 	local target
 	local use_value = 0
 	local max_value = -10000
+	local p_count = 0
 	for _, friend in ipairs(self.friends) do
 		use_value = 0
+		local count = 0
 		for _, p in sgs.qlist(self.room:getOtherPlayers(friend)) do
 			if p:inMyAttackRange(friend) then
+				count = count + 1
 				if self:isFriend(p) then
 					if not friend:hasSkill("manjuan") then use_value = use_value + 1 end
 				else
@@ -402,6 +415,7 @@ sgs.ai_skill_use_func.JiefanCard = function(card, use, self)
 				end
 			end
 		end
+		if friend:objectName() == self.player:objectName() then p_count = count end
 		use_value = use_value - friend:getHandcardNum() / 2
 		if use_value > max_value then
 			max_value = use_value
@@ -412,6 +426,12 @@ sgs.ai_skill_use_func.JiefanCard = function(card, use, self)
 	if target and max_value >= self.player:aliveCount() / 2 then
 		use.card = card
 		if use.to then use.to:append(target) end
+		return
+	end
+
+	if self:isWeak() and p_count > 0 then
+		use.card = card
+		if use.to then use.to:append(self.player) end
 	end
 end
 
@@ -783,6 +803,7 @@ local qice_skill = {}
 qice_skill.name = "qice"
 table.insert(sgs.ai_skills, qice_skill)
 qice_skill.getTurnUseCard = function(self)
+	sgs.ai_use_priority.QiceCard = 1.5
 	if self.player:hasUsed("QiceCard") or self.player:isKongcheng() then return end
 	local cards = self.player:getHandcards()
 	local allcard = {}
@@ -827,6 +848,7 @@ qice_skill.getTurnUseCard = function(self)
 		table.insert(allcard, card:getId())
 	end
 
+	if #allcard > 1 then sgs.ai_use_priority.QiceCard = 0 end
 	local godsalvation = sgs.Sanguosha:cloneCard("god_salvation", suit, 0)
 	if self.player:getHandcardNum() < 3 then
 		if aoe_available then

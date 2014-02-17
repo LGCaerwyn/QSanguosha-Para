@@ -419,8 +419,7 @@ sgs.ai_skill_use_func.TanhuCard = function(card, use, self)
 	end
 	local cards = sgs.QList2Table(self.player:getHandcards())
 	self:sortByUseValue(cards, true)
-	if self:getUseValue(cards[1]) >= 6 or self:getKeepValue(cards[1]) >= 6 then return end
-	if self:getOverflow() > 0 then
+	if (self:getUseValue(cards[1]) < 6 and self:getKeepValue(cards[1]) < 6) or self:getOverflow() > 0 then
 		if not ptarget:isKongcheng() then
 			self.tanhu_card = max_card:getEffectiveId()
 			use.card = sgs.Card_Parse("@TanhuCard=.")
@@ -648,11 +647,10 @@ end
 
 sgs.ai_skill_use_func.YanxiaoCard = function(card, use, self)
 	local players = self.room:getOtherPlayers(self.player)
-	local tricks
 	self:sort(self.friends_noself, "defense")
 	for _, friend in ipairs(self.friends_noself) do
 		local judges = friend:getJudgingArea()
-		local need_yanxiao = (friend:containsTrick("lightning") and self:getFinalRetrial(player) == 2)
+		local need_yanxiao = (friend:containsTrick("lightning") and self:getFinalRetrial(friend) == 2)
 							or friend:containsTrick("indulgence") or friend:containsTrick("supply_shortage")
 		if need_yanxiao and not friend:containsTrick("YanxiaoCard") then
 			use.card = card
@@ -1036,7 +1034,7 @@ sgs.ai_skill_cardask["@langgu-card"] = function(self, data)
 		if judge.card:getSuit() == sgs.Card_Spade then
 			self:sortByKeepValue(cards)
 			for _, card in ipairs(cards) do
-				if not card:getSuit() == sgs.Card_Spade and not isCard("Peach", card, self.player) then
+				if card:getSuit() ~= sgs.Card_Spade and not isCard("Peach", card, self.player) then
 					return "$" .. card:getId()
 				end
 			end
