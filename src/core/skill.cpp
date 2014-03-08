@@ -122,7 +122,7 @@ QDialog *Skill::getDialog() const{
 }
 
 ViewAsSkill::ViewAsSkill(const QString &name)
-    : Skill(name), response_pattern(QString())
+    : Skill(name), response_pattern(QString()), response_or_use(false)
 {
 }
 
@@ -415,6 +415,11 @@ SlashNoDistanceLimitSkill::SlashNoDistanceLimitSkill(const QString &skill_name)
 {
 }
 
+InvaliditySkill::InvaliditySkill(const QString &name)
+    : Skill(name)
+{
+}
+
 int SlashNoDistanceLimitSkill::getDistanceLimit(const Player *from, const Card *card) const{
     if (from->hasSkill(name) && card->getSkillName() == name)
         return 1000;
@@ -488,6 +493,17 @@ bool ArmorSkill::triggerable(const ServerPlayer *target) const{
     if (target == NULL || target->getArmor() == NULL)
         return false;
     return target->hasArmorEffect(objectName());
+}
+
+TreasureSkill::TreasureSkill(const QString &name)
+    : TriggerSkill(name)
+{
+}
+
+bool TreasureSkill::triggerable(const ServerPlayer *target) const{
+    if (target == NULL || target->getTreasure() == NULL)
+        return false;
+    return target->hasTreasure(objectName());
 }
 
 MarkAssignSkill::MarkAssignSkill(const QString &mark, int n)

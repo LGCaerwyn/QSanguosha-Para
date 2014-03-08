@@ -128,8 +128,6 @@ sgs.ai_playerchosen_intention.jieming = function(self, from, to)
 	end
 end
 
-sgs.ai_chaofeng.xunyu = 3
-
 local qiangxi_skill = {}
 qiangxi_skill.name = "qiangxi"
 table.insert(sgs.ai_skills, qiangxi_skill)
@@ -197,8 +195,6 @@ sgs.qiangxi_keep_value = {
 	Jink = 5.1,
 	Weapon = 5
 }
-
-sgs.ai_chaofeng.dianwei = 2
 
 local huoji_skill = {}
 huoji_skill.name = "huoji"
@@ -332,8 +328,6 @@ sgs.ai_skill_invoke.niepan = function(self, data)
 	return self:getCardsNum("Peach") + self:getCardsNum("Analeptic") < peaches
 end
 
-sgs.ai_chaofeng.pangtong = -1
-
 local tianyi_skill = {}
 tianyi_skill.name = "tianyi"
 table.insert(sgs.ai_skills, tianyi_skill)
@@ -376,7 +370,7 @@ sgs.ai_skill_use_func.TianyiCard = function(card, use, self)
 	local zhugeliang = self.room:findPlayerBySkillName("kongcheng")
 
 	local slash = self:getCard("Slash")
-	local dummy_use = { isDummy = true }
+	local dummy_use = { isDummy = true, extra_target = 1, to = sgs.SPlayerList() }
 	self.player:setFlags("slashNoDistanceLimit")
 	if slash then self:useBasicCard(slash, dummy_use) end
 	self.player:setFlags("-slashNoDistanceLimit")
@@ -407,18 +401,20 @@ sgs.ai_skill_use_func.TianyiCard = function(card, use, self)
 			end
 		end
 
-		self:sort(self.friends_noself, "handcard")
-		for index = #self.friends_noself, 1, -1 do
-			local friend = self.friends_noself[index]
-			if not friend:isKongcheng() then
-				local friend_min_card = self:getMinCard(friend)
-				local friend_min_point = friend_min_card and friend_min_card:getNumber() or 100
-				if friend:hasSkill("yingyang") then friend_min_point = math.max(1, friend_min_point - 3) end
-				if max_point > friend_min_point then
-					self.tianyi_card = max_card:getId()
-					use.card = sgs.Card_Parse("@TianyiCard=.")
-					if use.to then use.to:append(friend) end
-					return
+		if dummy_use.to:length() > 1 then
+			self:sort(self.friends_noself, "handcard")
+			for index = #self.friends_noself, 1, -1 do
+				local friend = self.friends_noself[index]
+				if not friend:isKongcheng() then
+					local friend_min_card = self:getMinCard(friend)
+					local friend_min_point = friend_min_card and friend_min_card:getNumber() or 100
+					if friend:hasSkill("yingyang") then friend_min_point = math.max(1, friend_min_point - 3) end
+					if max_point > friend_min_point then
+						self.tianyi_card = max_card:getId()
+						use.card = sgs.Card_Parse("@TianyiCard=.")
+						if use.to then use.to:append(friend) end
+						return
+					end
 				end
 			end
 		end
@@ -429,18 +425,6 @@ sgs.ai_skill_use_func.TianyiCard = function(card, use, self)
 				use.card = sgs.Card_Parse("@TianyiCard=.")
 				if use.to then use.to:append(zhugeliang) end
 				return
-			end
-		end
-
-		for index = #self.friends_noself, 1, -1 do
-			local friend = self.friends_noself[index]
-			if not friend:isKongcheng() then
-				if max_point >= 7 then
-					self.tianyi_card = max_card:getId()
-					use.card = sgs.Card_Parse("@TianyiCard=.")
-					if use.to then use.to:append(friend) end
-					return
-				end
 			end
 		end
 	end
@@ -504,8 +488,6 @@ sgs.dynamic_value.control_card.TianyiCard = true
 
 sgs.ai_use_value.TianyiCard = 8.5
 
-sgs.ai_chaofeng.taishici = 3
-
 local luanji_skill = {}
 luanji_skill.name = "luanji"
 table.insert(sgs.ai_skills, luanji_skill)
@@ -553,8 +535,6 @@ luanji_skill.getTurnUseCard = function(self)
 	end
 end
 
-sgs.ai_chaofeng.yuanshao = 1
-
 sgs.ai_skill_invoke.shuangxiong = function(self, data)
 	if self.player:isSkipped(sgs.Player_Play) or (self.player:getHp() < 2 and not (self:getCardsNum("Slash") > 1 and self.player:getHandcardNum() >= 4))
 		or #self.enemies == 0 then
@@ -600,8 +580,6 @@ shuangxiong_skill.getTurnUseCard = function(self)
 	assert(skillcard)
 	return skillcard
 end
-
-sgs.ai_chaofeng.yanliangwenchou = 1
 
 sgs.ai_skill_invoke.mengjin = function(self, data)
 	local effect = data:toSlashEffect()

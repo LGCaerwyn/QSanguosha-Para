@@ -2,7 +2,7 @@
 -- and it is a little different from config.ini
 
 config = {
-	version = "20140201",
+	version = "20140301",
 	version_name = "V2",
 	mod_name = "Para",
 	kingdoms = { "wei", "shu", "wu", "qun", "god" },
@@ -37,7 +37,6 @@ config = {
 		"Assassins",
 		"Special3v3",
 		"Special1v1",
-		"Special1v1OL",
 		"Special1v1Ext",
 		"SP",
 		"OL",
@@ -59,17 +58,19 @@ config = {
 		"Test"
 	},
 
-	hulao_packages = {
-		"standard",
-		"wind"
+	hulao_generals = { -- Temp settings
+		"package:standard",
+		"package:wind"
 	},
 
-	xmode_packages = {
-		"standard",
-		"wind",
-		"fire",
-		"nostal_standard",
-		"nostal_wind",
+	xmode_generals = {
+		"package:standard",
+		"package:wind",
+		"package:fire",
+		"package:nostal_standard",
+		"package:nostal_wind",
+		"-huatuo",
+		"-zhangjiao"
 	},
 
 	easy_text = {
@@ -94,37 +95,24 @@ config = {
 		"kof_xuchu",
 		"kof_zhenji",
 		"kof_xiahouyuan",
+		"kof_liubei",
 		"kof_guanyu",
 		"kof_huangyueying",
 		"kof_huangzhong",
+		"kof_weiyan",
 		"kof_jiangwei",
 		"kof_menghuo",
 		"kof_zhurong",
+		"kof_lvmeng",
+		"kof_daqiao",
 		"kof_sunshangxiang",
+		"kof_huatuo",
 		"kof_diaochan",
 	},
 
 	kof_ban = {
 		"sunquan",
 		"huatuo"
-	},
-
-	hulao_ban = {
-	},
-
-	xmode_ban = {
-		"huatuo",
-		"zhangjiao",
-		"caoren",
-		"zhoutai",
-		"yuji",
-		"liubei",
-		"diaochan",
-		"huangyueying",
-		"st_yuanshu",
-		"st_huaxiong",
-		"nos_zhangjiao",
-		"nos_yuji",
 	},
 
 	basara_ban = {
@@ -177,6 +165,7 @@ config = {
 		"wangyi+heg_dongzhuo",
 		"guanping+nos_zhangchunhua",
 		"zhuran+hetaihou",
+		"yuanshu+nos_lvmeng",
 		"xiahouba+nos_zhangchunhua",
 		"zhugeke+nos_zhangchunhua",
 		"bgm_diaochan+bgm_caoren", "bgm_dianchao+nos_caoren",
@@ -202,7 +191,7 @@ config = {
 		"zhugeliang|wolong|shenzhugeliang+huangyueying",
 		"menghuo+zhurong",
 		"zhouyu|shenzhouyu+xiaoqiao",
-		"lvbu|shenlvbu|dongzhuo|heg_dongzhuo+diaochan|bgm_diaochan",
+		"lvbu|shenlvbu+diaochan|bgm_diaochan",
 		"sunjian+wuguotai",
 		"sunce|heg_sunce+daqiao|bgm_daqiao",
 		"sunquan+bulianshi",
@@ -224,13 +213,14 @@ config = {
 		"machao->sp_machao|tw_machao",
 		"madai->heg_madai",
 		"nos_huangyueying->heg_huangyueying|tw_huangyueying",
+		"nos_zhangliao->tw_zhangliao",
+		"panfeng->sp_panfeng",
 		"pangde->sp_pangde",
 		"shenlvbu->sp_shenlvbu",
 		"sunshangxiang->sp_sunshangxiang",
 		"xiaoqiao->wz_xiaoqiao|heg_xiaoqiao|sp_heg_xiaoqiao",
 		"yuanshu->tw_yuanshu",
 		"yuejin->sp_yuejin",
-		"zhangliao->tw_zhangliao",
 		"zhaoyun->tw_zhaoyun",
 		"zhenji->sp_zhenji|heg_zhenji|tw_zhenji",
 		"zhouyu->heg_zhouyu|sp_heg_zhouyu",

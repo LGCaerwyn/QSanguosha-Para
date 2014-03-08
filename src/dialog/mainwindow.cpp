@@ -131,7 +131,7 @@ MainWindow::~MainWindow() {
 
 void MainWindow::gotoScene(QGraphicsScene *scene) {
     if (this->scene)
-        this->scene->deleteLater();
+        delete this->scene;
     this->scene = scene;
     view->setScene(scene);
     /* @todo: Need a better way to replace the magic number '4' */
@@ -178,8 +178,6 @@ void MainWindow::on_actionStart_Server_triggered() {
                 this->on_actionMinimize_to_system_tray_triggered();
         }
     } else {
-        server->createNewRoom();
-
         Config.HostAddress = "127.0.0.1";
         startConnection();
     }

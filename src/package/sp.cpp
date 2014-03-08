@@ -1588,6 +1588,14 @@ public:
         else
             return 0;
     }
+
+    virtual int getResidueNum(const Player *from, const Card *card) const{
+        if (from->getMark("qiangwu") > 0
+            && (card->getNumber() > from->getMark("qiangwu") || card->hasFlag("Global_SlashAvailabilityChecker")))
+            return 1000;
+        else
+            return 0;
+    }
 };
 
 #include "jsonutils.h"
@@ -2068,6 +2076,9 @@ SPPackage::SPPackage()
     xingcai->addSkill(new Qiangwu);
     xingcai->addSkill(new QiangwuTargetMod);
     related_skills.insertMulti("qiangwu", "#qiangwu-target");
+
+    General *sp_panfeng = new General(this, "sp_panfeng", "qun", 4, true, true); // SP 029
+    sp_panfeng->addSkill("kuangfu");
 
     addMetaObject<YuanhuCard>();
     addMetaObject<XuejiCard>();

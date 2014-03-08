@@ -171,11 +171,13 @@ public:
     WrappedCard *getArmor() const;
     WrappedCard *getDefensiveHorse() const;
     WrappedCard *getOffensiveHorse() const;
+    WrappedCard *getTreasure() const;
     QList<const Card *> getEquips() const;
     const EquipCard *getEquip(int index) const;
 
     bool hasWeapon(const char *weapon_name) const;
     bool hasArmorEffect(const char *armor_name) const;
+    bool hasTreasure(const char *treasure_name) const;
 
     bool isKongcheng() const;
     bool isNude() const;
@@ -205,7 +207,7 @@ public:
     void setPileOpen(const char *pile_name, const char *player);
 
     void addHistory(const char *name, int times = 1);
-    void clearHistory();
+    void clearHistory(const char *name = "");
     bool hasUsed(const char *card_class) const;
     int usedTimes(const char *card_class) const;
     int getSlashCount() const;
@@ -332,10 +334,10 @@ public:
     void introduceTo(ServerPlayer *player);
     void marshal(ServerPlayer *player) const;
 
-    void addToPile(const char *pile_name, const Card *card, bool open = true);
-    void addToPile(const char *pile_name, int card_id, bool open = true);
-    void addToPile(const char *pile_name, QList<int> card_ids, bool open = true);
-    void addToPile(const char *pile_name, QList<int> card_ids, bool open, CardMoveReason reason);
+    void addToPile(const char *pile_name, const Card *card, bool open = true, QList<ServerPlayer *> open_players = QList<ServerPlayer *>());
+    void addToPile(const char *pile_name, int card_id, bool open = true, QList<ServerPlayer *> open_players = QList<ServerPlayer *>());
+    void addToPile(const char *pile_name, QList<int> card_ids, bool open = true, QList<ServerPlayer *> open_players = QList<ServerPlayer *>());
+    void addToPile(const char *pile_name, QList<int> card_ids, bool open, QList<ServerPlayer *> open_players, CardMoveReason reason);
     void exchangeFreelyFromPrivatePile(const char *skill_name, const char *pile_name, int upperlimit = 1000, bool include_equip = false);
     void gainAnExtraTurn();
 };
@@ -449,6 +451,8 @@ struct DamageStruct {
     bool transfer;
     bool by_user;
     QString reason;
+    QString transfer_reason;
+    bool prevented;
 
     QString getReason() const;
 };
@@ -896,6 +900,7 @@ public:
     QList<const DistanceSkill *> getDistanceSkills() const;
     QList<const MaxCardsSkill *> getMaxCardsSkills() const;
     QList<const TargetModSkill *> getTargetModSkills() const;
+    QList<const InvaliditySkill *> getInvaliditySkills() const;
     QList<const TriggerSkill *> getGlobalTriggerSkills() const;
     void addSkills(const QList<const Skill *> &skills);
 
@@ -919,6 +924,7 @@ public:
     int correctDistance(const Player *from, const Player *to) const;
     int correctMaxCards(const Player *target) const;
     int correctCardTarget(const TargetModSkill::ModType type, const Player *from, const Card *card) const;
+    bool correctSkillValidity(const Player *player, const Skill *skill) const;
 
     Room *currentRoom();
 
@@ -1056,6 +1062,7 @@ public:
     QList<int> getNCards(int n, bool update_pile_number = true);
     ServerPlayer *getLord() const;
     void askForGuanxing(ServerPlayer *zhuge, const QList<int> &cards, GuanxingType guanxing_type = GuanxingBothSides);
+    void returnToTopDrawPile(const QList<int> &cards);
     int doGongxin(ServerPlayer *shenlvmeng, ServerPlayer *target, QList<int> enabled_ids = QList<int>(), const char *skill_name = "gongxin");
     int drawCard();
     void fillAG(const QList<int> &card_ids, ServerPlayer *who = NULL, const QList<int> &disabled_ids = QList<int>());

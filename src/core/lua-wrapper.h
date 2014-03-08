@@ -43,7 +43,7 @@ class LuaViewAsSkill: public ViewAsSkill {
     Q_OBJECT
 
 public:
-    LuaViewAsSkill(const char *name, const char *response_pattern = "");
+    LuaViewAsSkill(const char *name, const char *response_pattern = "", bool response_or_use = false);
 
     virtual bool viewFilter(const QList<const Card *> &selected, const Card *to_select) const;
     virtual const Card *viewAs(const QList<const Card *> &cards) const;
@@ -112,6 +112,17 @@ public:
     LuaFunction residue_func;
     LuaFunction distance_limit_func;
     LuaFunction extra_target_func;
+};
+
+class LuaInvaliditySkill: public InvaliditySkill {
+    Q_OBJECT
+
+public:
+    LuaInvaliditySkill(const char *name);
+
+    virtual bool isSkillValid(const Player *player, const Skill *skill) const;
+
+    LuaFunction skill_valid;
 };
 
 class LuaSkillCard: public SkillCard {

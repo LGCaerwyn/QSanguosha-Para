@@ -129,8 +129,6 @@ function SmartAI:doNotSave(player)
 	return false
 end
 
-sgs.ai_chaofeng.shenguanyu = -6
-
 sgs.ai_skill_invoke.shelie = true
 
 local gongxin_skill = {}
@@ -286,7 +284,7 @@ sgs.ai_skill_askforag.gongxin = function(self, card_ids)
 
 	if self:isFriend(nextAlive) and not self:willSkipDrawPhase(nextAlive) and not self:willSkipPlayPhase(nextAlive)
 		and not nextAlive:hasSkill("luoshen")
-		and not nextAlive:hasSkill("tuxi") and not (nextAlive:hasSkill("qiaobian") and nextAlive:getHandcardNum() > 0) then
+		and not nextAlive:hasSkills("tuxi|nostuxi") and not (nextAlive:hasSkill("qiaobian") and nextAlive:getHandcardNum() > 0) then
 		if (peach and valuable == peach) or (ex_nihilo and valuable == ex_nihilo) then
 			self.gongxinchoice = "put"
 			return valuable
@@ -423,7 +421,7 @@ yeyan_skill.getTurnUseCard = function(self)
 		end
 	end
 	for _, enemy in ipairs(self.enemies) do
-		if enemy:isChained() and self:isGoodChainTarget(enemy) then 
+		if enemy:isChained() and self:isGoodChainTarget(enemy, self.player, sgs.DamageStruct_Fire) then 
 			if chained == 0 then target_num = target_num +1 end
 			chained = chained + 1
 		end
@@ -520,7 +518,7 @@ sgs.ai_skill_use_func.SmallYeyanCard = function(card, use, self)
 	self:sort(self.enemies, "hp")
 	for _, enemy in ipairs(self.enemies) do
 		if not (enemy:hasSkill("tianxiang") and enemy:getHandcardNum() > 0) and self:damageIsEffective(enemy, sgs.DamageStruct_Fire)
-			and enemy:isChained() and self:isGoodChainTarget(enemy) and (enemy:hasArmorEffect("vine") or enemy:getMark("@gale") > 0) then
+			and enemy:isChained() and self:isGoodChainTarget(enemy, self.player, sgs.DamageStruct_Fire) and (enemy:hasArmorEffect("vine") or enemy:getMark("@gale") > 0) then
 			targets:append(enemy)
 			if targets:length() >= 3 then break end
 		end
@@ -528,8 +526,8 @@ sgs.ai_skill_use_func.SmallYeyanCard = function(card, use, self)
 	if targets:length() < 3 then
 		for _, enemy in ipairs(self.enemies) do
 			if not targets:contains(enemy)
-				and not (enemy:hasSkill("tianxiang") and enemy:getHandcardNum() > 0) and self:damageIsEffective(enemy, sgs.DamageStruct_Fire)
-				and enemy:isChained() and self:isGoodChainTarget(enemy) then
+				and not (enemy:hasSkill("tianxiang") and enemy:getHandcardNum() > 0)
+				and enemy:isChained() and self:isGoodChainTarget(enemy, self.player, sgs.DamageStruct_Fire) then
 				targets:append(enemy)
 				if targets:length() >= 3 then break end
 			end
@@ -746,8 +744,6 @@ sgs.ai_need_damaged.guixin = function(self, attacker, player)
 	return not self:isLihunTarget(player, drawcards)
 end
 
-sgs.ai_chaofeng.shencaocao = -6
-
 sgs.ai_skill_choice.wumou = function(self, choices)
 	if self.player:getMark("@wrath") > 6 then return "discard" end
 	if self.player:getHp() + self:getCardsNum("Peach") > 3 then
@@ -771,7 +767,7 @@ sgs.ai_skill_use_func.WuqianCard = function(wuqiancard, use, self)
 	if self:getCardsNum("Slash") > 0 then
 		for _, card in sgs.qlist(self.player:getHandcards()) do
 			if isCard("Duel", card, self.player) then
-				local dummy_use = { isDummy = true, isWuqian = true, to = sgs.SPlayetList() }
+				local dummy_use = { isDummy = true, isWuqian = true, to = sgs.SPlayerList() }
 				local duel = sgs.Sanguosha:cloneCard("duel", card:getSuit(), card:getNumber())
 				self:useCardDuel(duel, dummy_use)
 				if dummy_use.card and dummy_use.to:length() > 0 and (self:isWeak(dummy_use.to:first()) or dummy_use.to:length() > 1) then

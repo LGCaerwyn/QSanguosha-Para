@@ -203,13 +203,9 @@ function sgs.ai_cardneed.liegong(to, card, self)
 			or (card:isKindOf("Weapon") and not (to:getWeapon() or getKnownCard(to, self, "Weapon") > 0))
 end
 
-sgs.ai_chaofeng.huangzhong = 1
-
 function sgs.ai_cardneed.kuanggu(to, card, self)
 	return card:isKindOf("OffensiveHorse") and not (to:getOffensiveHorse() or getKnownCard(to, self, "OffensiveHorse", false) > 0)
 end
-
-sgs.ai_chaofeng.weiyan = -2
 
 sgs.ai_skill_cardask["@guidao-card"] = function(self, data)
 	local judge = data:toJudge()
@@ -355,7 +351,7 @@ function sgs.ai_slash_prohibit.leiji(self, from, to, card)
 				break
 			end
 		end
-		if not other_rebel and ((from:getHp() >= 4 and (getCardsNum("Peach", from, self.player) > 0 or from:hasSkills("ganglie|vsganglie"))) or from:hasSkill("hongyan")) then
+		if not other_rebel and ((from:getHp() >= 4 and (getCardsNum("Peach", from, self.player) > 0 or from:hasSkills("ganglie|nosganglie|vsganglie"))) or from:hasSkill("hongyan")) then
 			return false
 		end
 	end
@@ -469,8 +465,6 @@ sgs.guidao_suit_value = {
 	club = 2.7
 }
 
-sgs.ai_chaofeng.zhangjiao = 4
-
 sgs.ai_skill_invoke.fenji = function(self, data)
 	local move = data:toMoveOneTime()
 	local from = findPlayerByObjectName(self.room, move.from:objectName())
@@ -522,7 +516,7 @@ sgs.ai_skill_use["@@tianxiang"] = function(self, data, method)
 
 	for _, enemy in ipairs(self.enemies) do
 		if (enemy:getHp() <= dmg.damage and enemy:isAlive()) then
-			if (enemy:getHandcardNum() <= 2 or enemy:hasSkills("guose|leiji|ganglie|enyuan|qingguo|wuyan|kongcheng") or enemy:containsTrick("indulgence"))
+			if (enemy:getHandcardNum() <= 2 or enemy:hasSkills("guose|leiji|ganglie|nosganglie|vsganglie|enyuan|qingguo|wuyan|kongcheng") or enemy:containsTrick("indulgence"))
 				and self:canAttack(enemy, dmg.from or self.room:getCurrent(), dmg.nature)
 				and not (dmg.card and dmg.card:getTypeId() == sgs.Card_TypeTrick and enemy:hasSkill("wuyan")) then
 				return "@TianxiangCard=" .. card_id .. "->" .. enemy:objectName()
@@ -548,7 +542,7 @@ sgs.ai_skill_use["@@tianxiang"] = function(self, data, method)
 	for _, enemy in ipairs(self.enemies) do
 		if (enemy:getLostHp() <= 1 or dmg.damage > 1) and enemy:isAlive() then
 			if (enemy:getHandcardNum() <= 2)
-				or enemy:containsTrick("indulgence") or enemy:hasSkills("guose|leiji|vsganglie|ganglie|enyuan|qingguo|wuyan|kongcheng")
+				or enemy:containsTrick("indulgence") or enemy:hasSkills("guose|leiji|ganglie|vsganglie|nosganglie|enyuan|qingguo|wuyan|kongcheng")
 				and self:canAttack(enemy, (dmg.from or self.room:getCurrent()), dmg.nature)
 				and not (dmg.card and dmg.card:getTypeId() == sgs.Card_TypeTrick and enemy:hasSkill("wuyan")) then
 				return "@TianxiangCard=" .. card_id .. "->" .. enemy:objectName() end
@@ -569,14 +563,12 @@ end
 
 sgs.ai_card_intention.TianxiangCard = function(self, card, from, tos)
 	local to = tos[1]
-	if self:getDamagedEffects(to) or self:needToLoseHp(to) then return end
-	local intention = 10
-	if hasBuquEffect(to) then intention = 0
-	elseif (to:getHp() >= 2 and to:hasSkills("yiji|shuangxiong|zaiqi|yinghun|jianxiong|fangzhu"))
+	if self:getDamagedEffects(to) or self:needToLoseHp(to) or hasBuquEffect(to)
+		or (to:getHp() >= 2 and to:hasSkills("yiji|shuangxiong|zaiqi|yinghun|jianxiong|fangzhu"))
 		or (to:getHandcardNum() < 3 and (to:hasSkill("nosrende") or (to:hasSkill("rende") and not to:hasUsed("RendeCard")))) then
-		intention = -10
+		return
 	end
-	sgs.updateIntention(from, to, intention)
+	sgs.updateIntention(from, to, 10)
 end
 
 function sgs.ai_slash_prohibit.tianxiang(self, from, to)
@@ -604,7 +596,7 @@ sgs.ai_skill_choice.guhuo = function(self, choices)
 	if guhuoname == "normal_slash" then guhuoname = "slash" end
 	local guhuocard = sgs.Sanguosha:cloneCard(guhuoname)
 	local guhuotype = guhuocard:getClassName()
-	if guhuotype and self:getRestCardsNum(guhuotype, yuji) == 0 and self.player:getHp() > 0 then return "question" end
+	if guhuotype and self:getRestCardsNum(guhuotype, yuji) == 0 then return "question" end
 	if guhuotype and guhuotype == "AmazingGrace" then return "noquestion" end
 	if self.player:hasSkill("hunzi") and self.player:getMark("hunzi") == 0 and math.random(1, 15) ~= 1 then return "noquestion" end
 	if guhuotype:match("Slash") then
@@ -617,6 +609,27 @@ sgs.ai_skill_choice.guhuo = function(self, choices)
 		if getKnownCard(yuji, self.player, guhuotype, false) > 0 then x = x * 3 end
 	end
 	return math.random(1, x) == 1 and "question" or "noquestion"
+end
+
+sgs.ai_choicemade_filter.skillChoice.guhuo = function(self, player, promptlist)
+	if promptlist[#promptlist] == "question" then
+		local yuji = self.room:findPlayerBySkillName("guhuo")
+		if not yuji then return end
+		local guhuoname = self.room:getTag("GuhuoType"):toString()
+		if guhuoname == "peach+analeptic" or guhuoname == "peach" then
+			sgs.updateIntention(player, yuji, 80)
+			return
+		end
+		if guhuoname == "normal_slash" then guhuoname = "slash" end
+		local guhuocard = sgs.Sanguosha:cloneCard(guhuoname)
+		if guhuocard then
+			local guhuotype = guhuocard:getClassName()
+			if guhuotype and self:getRestCardsNum(guhuotype, yuji) > 0 then
+				sgs.updateIntention(player, yuji, 80)
+				return
+			end
+		end
+	end
 end
 
 local guhuo_skill = {}

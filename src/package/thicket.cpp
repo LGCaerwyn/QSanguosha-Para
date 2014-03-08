@@ -107,6 +107,7 @@ class Duanliang: public OneCardViewAsSkill {
 public:
     Duanliang(): OneCardViewAsSkill("duanliang") {
         filter_pattern = "BasicCard,EquipCard|black";
+        response_or_use = true;
     }
 
     virtual const Card *viewAs(const Card *originalCard) const{
@@ -267,14 +268,14 @@ public:
 
                     CardMoveReason reason(CardMoveReason::S_REASON_NATURAL_ENTER, menghuo->objectName(), "zaiqi", QString());
                     room->throwCard(dummy, reason, NULL);
-                    dummy->deleteLater();
+                    delete dummy;
                     has_heart = true;
                 }
                 if (!card_to_gotback.isEmpty()) {
                     DummyCard *dummy2 = new DummyCard(card_to_gotback);
                     CardMoveReason reason(CardMoveReason::S_REASON_GOTBACK, menghuo->objectName());
                     room->obtainCard(menghuo, dummy2, reason);
-                    dummy2->deleteLater();
+                    delete dummy2;
                 }
 
                 if (has_heart)
@@ -693,6 +694,7 @@ class Jiuchi: public OneCardViewAsSkill {
 public:
     Jiuchi(): OneCardViewAsSkill("jiuchi") {
         filter_pattern = ".|spade|.|hand";
+        response_or_use = true;
     }
 
     virtual bool isEnabledAtPlay(const Player *player) const{

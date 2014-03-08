@@ -105,6 +105,16 @@ function sgs.CreateTargetModSkill(spec)
 	return skill
 end
 
+function sgs.CreateInvaliditySkill(spec)
+	assert(type(spec.name) == "string")
+	assert(type(spec.skill_valid) == "function")
+
+	local skill = sgs.LuaInvaliditySkill(spec.name)
+	skill.skill_valid = spec.skill_valid
+
+	return skill
+end
+
 function sgs.CreateMasochismSkill(spec)
 	assert(type(spec.on_damaged) == "function")
 
@@ -450,8 +460,9 @@ function sgs.CreateViewAsSkill(spec)
 	assert(type(spec.name) == "string")
 	if spec.response_pattern then assert(type(spec.response_pattern) == "string") end
 	local response_pattern = spec.response_pattern or ""
+	local response_or_use = spec.response_or_use or false
 
-	local skill = sgs.LuaViewAsSkill(spec.name, response_pattern)
+	local skill = sgs.LuaViewAsSkill(spec.name, response_pattern, response_or_use)
 	local n = spec.n or 0
 
 	function skill:view_as(cards)
@@ -474,9 +485,10 @@ function sgs.CreateOneCardViewAsSkill(spec)
 	assert(type(spec.name) == "string")
 	if spec.response_pattern then assert(type(spec.response_pattern) == "string") end
 	local response_pattern = spec.response_pattern or ""
+	local response_or_use = spec.response_or_use or false
 	if spec.filter_pattern then assert(type(spec.filter_pattern) == "string") end
 
-	local skill = sgs.LuaViewAsSkill(spec.name, response_pattern)
+	local skill = sgs.LuaViewAsSkill(spec.name, response_pattern, response_or_use)
 
 	function skill:view_as(cards)
 		if #cards ~= 1 then return nil end
@@ -507,8 +519,9 @@ function sgs.CreateZeroCardViewAsSkill(spec)
 	assert(type(spec.name) == "string")
 	if spec.response_pattern then assert(type(spec.response_pattern) == "string") end
 	local response_pattern = spec.response_pattern or ""
+	local response_or_use = spec.response_or_use or false
 
-	local skill = sgs.LuaViewAsSkill(spec.name, response_pattern)
+	local skill = sgs.LuaViewAsSkill(spec.name, response_pattern, response_or_use)
 
 	function skill:view_as(cards)
 		if #cards > 0 then return nil end

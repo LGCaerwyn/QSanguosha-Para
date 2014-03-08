@@ -65,8 +65,11 @@ public:
     virtual bool isEnabledAtNullification(const ServerPlayer *player) const;
     static const ViewAsSkill *parseViewAsSkill(const Skill *skill);
 
+    inline bool isResponseOrUse() const{ return response_or_use; }
+
 protected:
     QString response_pattern;
+    bool response_or_use;
 };
 
 class ZeroCardViewAsSkill: public ViewAsSkill {
@@ -260,6 +263,15 @@ protected:
     QString name;
 };
 
+class InvaliditySkill: public Skill {
+    Q_OBJECT
+
+public:
+    InvaliditySkill(const QString &skill_name);
+
+    virtual bool isSkillValid(const Player *player, const Skill *skill) const = 0;
+};
+
 // a nasty way for 'fake moves', usually used in the process of multi-card chosen
 class FakeMoveSkill: public TriggerSkill {
     Q_OBJECT
@@ -303,6 +315,15 @@ class ArmorSkill: public TriggerSkill {
 
 public:
     ArmorSkill(const QString &name);
+
+    virtual bool triggerable(const ServerPlayer *target) const;
+};
+
+class TreasureSkill: public TriggerSkill {
+    Q_OBJECT
+
+public:
+    TreasureSkill(const QString &name);
 
     virtual bool triggerable(const ServerPlayer *target) const;
 };

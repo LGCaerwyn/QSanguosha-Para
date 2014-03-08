@@ -193,6 +193,7 @@ class Yanzheng: public OneCardViewAsSkill {
 public:
     Yanzheng(): OneCardViewAsSkill("yanzheng") {
         filter_pattern = ".|.|.|equipped";
+        response_or_use = true;
     }
 
     virtual bool isEnabledAtPlay(const Player *) const{
@@ -947,24 +948,12 @@ public:
             log.from = player;
             log.to << target;
             room->sendLog(log);
-            DamageStruct damage = data.value<DamageStruct>();
 
-            if (damage.card && damage.card->isKindOf("Slash"))
-                player->removeQinggangTag(damage.card);
-
-            DamageStruct newdamage = damage;
+            DamageStruct newdamage = data.value<DamageStruct>();
             newdamage.to = target;
             newdamage.transfer = true;
-
-            target->addMark("ShichouTarget");
-            try {
-                room->damage(newdamage);
-            }
-            catch (TriggerEvent triggerEvent) {
-                if (triggerEvent == TurnBroken || triggerEvent == StageChange)
-                    target->removeMark("ShichouTarget");
-                throw triggerEvent;
-            }
+            newdamage.transfer_reason = "shichou";
+            player->tag["TransferDamage"] = QVariant::fromValue(newdamage);
             return true;
         } else if (triggerEvent == Dying) {
             DyingStruct dying = data.value<DyingStruct>();
@@ -989,11 +978,8 @@ public:
 
     virtual bool trigger(TriggerEvent, Room *, ServerPlayer *player, QVariant &data) const{
         DamageStruct damage = data.value<DamageStruct>();
-        if (player->isAlive() && player->getMark("ShichouTarget") > 0 && damage.transfer) {
+        if (player->isAlive() && damage.transfer && damage.transfer_reason == "shichou")
             player->drawCards(damage.damage);
-            player->removeMark("ShichouTarget");
-        }
-
         return false;
     }
 };
@@ -1459,7 +1445,6 @@ BGMPackage::BGMPackage(): Package("BGM") {
     bgm_ganning->addSkill(new Yinling);
     bgm_ganning->addSkill(new Junwei);
     bgm_ganning->addSkill(new JunweiGot);
-    related_skills.insertMulti("yinling", "#yinling-clear");
     related_skills.insertMulti("junwei", "#junwei-got");
 
     General *bgm_xiahoudun = new General(this, "bgm_xiahoudun", "wei"); // *SP 010
@@ -1869,7 +1854,7 @@ public:
                 }
                 data = QVariant::fromValue(move);
                 if (!to_add.isEmpty())
-                    liuxie->addToPile("edict", to_add, true, move.reason);
+                    liuxie->addToPile("edict", to_add, true, QList<ServerPlayer *>(), move.reason);
             }
         }
         return false;

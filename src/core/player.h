@@ -159,11 +159,13 @@ public:
     WrappedCard *getArmor() const;
     WrappedCard *getDefensiveHorse() const;
     WrappedCard *getOffensiveHorse() const;
+    WrappedCard *getTreasure() const;
     QList<const Card *> getEquips() const;
     const EquipCard *getEquip(int index) const;
 
     bool hasWeapon(const QString &weapon_name) const;
     bool hasArmorEffect(const QString &armor_name) const;
+    bool hasTreasure(const QString &treasure_name) const;
 
     bool isKongcheng() const;
     bool isNude() const;
@@ -193,7 +195,7 @@ public:
     void setPileOpen(const QString &pile_name, const QString &player);
 
     void addHistory(const QString &name, int times = 1);
-    void clearHistory();
+    void clearHistory(const QString &name = QString());
     bool hasUsed(const QString &card_class) const;
     int usedTimes(const QString &card_class) const;
     int getSlashCount() const;
@@ -253,7 +255,7 @@ private:
     bool alive;
 
     Phase phase;
-    WrappedCard *weapon, *armor, *defensive_horse, *offensive_horse;
+    WrappedCard *weapon, *armor, *defensive_horse, *offensive_horse, *treasure;
     bool face_up;
     bool chained;
     QList<int> judging_area;

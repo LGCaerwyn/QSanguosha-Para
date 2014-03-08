@@ -172,7 +172,7 @@ function sgs.ai_skill_invoke.zhenlie(self, data)
 				if (self.player:hasArmorEffect("vine") or self.player:getMark("@gale") > 0) and use.from:getHandcardNum() > 3
 					and not (use.from:hasSkill("hongyan") and self:hasSuit("spade")) then
 					return not self:doNotDiscard(use.from)
-				elseif self.player:isChained() and not self:isGoodChainTarget(self.player, use.from) then
+				elseif self.player:isChained() and not self:isGoodChainTarget(self.player, use.from, sgs.DamageStruct_Fire, nil, use.card) then
 					return not self:doNotDiscard(use.from)
 				end
 			elseif (use.card:isKindOf("Snatch") or use.card:isKindOf("Dismantlement"))
@@ -366,7 +366,7 @@ end
 sgs.ai_skill_use_func.GongqiCard = function(card, use, self)
 	local id = card:getSubcards():first()
 	local subcard = sgs.Sanguosha:getCard(id)
-	if subcard:isKindOf("SilverLion") and room:getCardPlace(id) == sgs.Player_PlaceHand then
+	if subcard:isKindOf("SilverLion") and self.room:getCardPlace(id) == sgs.Player_PlaceHand then
 		local dummy_use = { isDummy = true }
 		self:useEquipCard(subcard, dummy_use)
 		if dummy_use.card then
@@ -660,7 +660,7 @@ sgs.ai_skill_playerchosen.zhuiyi = function(self, targets)
 end
 
 sgs.ai_skill_invoke.lihuo = function(self, data)
-	if not sgs.ai_skill_invoke.fan(self, data) then return false end
+	if self.player:hasWeapon("fan") or not sgs.ai_skill_invoke.fan(self, data) then return false end
 	local use = data:toCardUse()
 	for _, player in sgs.qlist(use.to) do
 		if self:isEnemy(player) and not self:damageIsEffective(player) and self:damageIsEffective(player, sgs.DamageStruct_Fire) and sgs.isGoodTarget(player, self.enemies, self) then return true end

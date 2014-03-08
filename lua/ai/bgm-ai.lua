@@ -132,7 +132,7 @@ sgs.ai_skill_use_func.LihunCard = function(card, use, self)
 			local slash = self:getCard("Slash") or sgs.Sanguosha:cloneCard("slash")
 			for _, enemy in ipairs(self.enemies) do
 				if enemy:isMale() and self:slashIsEffective(slash, enemy) and self.player:distanceTo(enemy) == 1
-					and not enemy:hasSkills("fenyong|zhichi|fankui|vsganglie|ganglie|enyuan|nosenyuan|langgu|guixin|kongcheng")
+					and not enemy:hasSkills("fenyong|zhichi|fankui|ganglie|vsganglie|nosganglie|enyuan|nosenyuan|langgu|guixin|kongcheng")
 					and self:getCardsNum("Slash") + getKnownCard(enemy, self.player, "Slash") >= 3 then
 					target = enemy
 					break
@@ -248,8 +248,6 @@ sgs.ai_view_as.yanzheng = function(card, player, card_place)
 		return ("nullification:yanzheng[%s:%s]=%d"):format(suit, number, card_id)
 	end
 end
-
-sgs.ai_chaofeng.bgm_pangtong = 10
 
 sgs.ai_skill_invoke.manjuan = true
 sgs.ai_skill_invoke.zuixiang = true
@@ -484,7 +482,8 @@ sgs.ai_skill_playerchosen.zhaolie = function(self, targets)
 	targets = sgs.QList2Table(targets)
 	self:sort(targets, "hp")
 	for _, target in ipairs(targets) do
-		if self:isEnemy(target) and self:damageIsEffective(target) and sgs.isGoodTarget(target, targets, self) then
+		if self:isEnemy(target) and self:damageIsEffective(target) and sgs.isGoodTarget(target, targets, self) and not self:doNotDiscard(target)
+			and not (self:isWeak() and (target:getHp() > 1 or target:getCardCount() >= 3)) then
 			return target
 		end
 	end

@@ -283,8 +283,6 @@ sgs.nosxuanhuo_suit_value = {
 	heart = 3.9
 }
 
-sgs.ai_chaofeng.nos_fazheng = -3
-
 sgs.ai_cardneed.nosxuanhuo = function(to, card)
 	return card:getSuit() == sgs.Card_Heart
 end
@@ -606,7 +604,7 @@ sgs.ai_skill_playerchosen.nospaiyi = function(self, targets)
 
 		local enemies = self.enemies
 		for _, enemy in ipairs(enemies) do
-			if (enemy:hasSkills("yongsi|haoshi|tuxi") or (enemy:hasSkill("zaiqi") and enemy:getLostHp() > 1))
+			if (enemy:hasSkills("yongsi|haoshi|tuxi|nostuxi") or (enemy:hasSkill("zaiqi") and enemy:getLostHp() > 1))
 				and not enemy:containsTrick("supply_shortage") and enemy:faceUp() and self:objectiveLevel(enemy) > 3 then
 				sgs.nosPaiyiTarget = enemy
 				sgs.nosPaiyiCard = nil
@@ -661,109 +659,137 @@ sgs.ai_skill_choice.nospaiyi = function(self, choices)
 	return "Hand"
 end
 
-sgs.ai_skill_invoke.weiwudi_guixin = true
+sgs.ai_skill_invoke.nosganglie = function(self, data)
+	local mode = self.room:getMode()
+	if mode:find("_mini_40") or mode:find("_mini_46") then return true end
+	local damage = data:toDamage()
+	if not damage.from then
+		local zhangjiao = self.room:findPlayerBySkillName("guidao")
+		return zhangjiao and self:isFriend(zhangjiao) and not zhangjiao:isNude()
+	end
+	if self:getDamagedEffects(damage.from, self.player) then
+		if self:isFriend(damage.from) then
+			sgs.ai_nosganglie_effect = string.format("%s_%s_%d", self.player:objectName(), damage.from:objectName(), sgs.turncount)
+			return true
+		end
+		return false
+	end
+	return not self:isFriend(damage.from) and self:canAttack(damage.from)
+end
 
-local function findPlayerForModifyKingdom(self, players)
-	local lord = self.room:getLord()
-	local isGood = self:isFriend(lord)
+sgs.ai_need_damaged.nosganglie = function(self, attacker, player)
+	if not attacker then return false end
+	if not attacker:hasSkill("nosganglie") and self:getDamagedEffects(attacker, player) then return self:isFriend(attacker, player) end
+	if self:isEnemy(attacker) and attacker:getHp() + attacker:getHandcardNum() <= 3
+		and not (attacker:hasSkills(sgs.need_kongcheng .. "|buqu") and attacker:getHandcardNum() > 1) and sgs.isGoodTarget(attacker, self:getEnemies(attacker), self) then
+		return true
+	end
+	return false
+end
 
-	for _, player in sgs.qlist(players) do
-		if player:hasSkill("huashen") then
-		elseif lord and not player:isLord() then
-			if sgs.evaluatePlayerRole(player) == "loyalist" then
-				local sameKingdom = player:getKingdom() == lord:getKingdom()
-				if isGood ~= sameKingdom then
-					return player
-				end
-			elseif lord:hasLordSkill("xueyi") and not player:isLord() then
-				local isQun = player:getKingdom() == "qun"
-				if isGood ~= isQun then
-					return player
-				end
+function nosganglie_discard(self, discard_num, min_num, optional, include_equip, skillName)
+	local xiahou = self.room:findPlayerBySkillName(skillName)
+	if xiahou and (not self:damageIsEffective(self.player, sgs.DamageStruct_Normal, xiahou) or self:getDamagedEffects(self.player, xiahou)) then return {} end
+	if xiahou and self:needToLoseHp(self.player, xiahou) then return {} end
+	local to_discard = {}
+	local cards = sgs.QList2Table(self.player:getHandcards())
+	local index = 0
+	local all_peaches = 0
+	for _, card in ipairs(cards) do
+		if isCard("Peach", card, self.player) then
+			all_peaches = all_peaches + 1
+		end
+	end
+	if all_peaches >= 2 and self:getOverflow() <= 0 then return {} end
+	self:sortByKeepValue(cards)
+	cards = sgs.reverse(cards)
+
+	for i = #cards, 1, -1 do
+		local card = cards[i]
+		if not isCard("Peach", card, self.player) and not self.player:isJilei(card) then
+			table.insert(to_discard, card:getEffectiveId())
+			table.remove(cards, i)
+			index = index + 1
+			if index == 2 then break end
+		end
+	end
+	if #to_discard < 2 then return {}
+	else
+		return to_discard
+	end
+end
+
+sgs.ai_skill_discard.nosganglie = function(self, discard_num, min_num, optional, include_equip)
+	return nosganglie_discard(self, discard_num, min_num, optional, include_equip, "nosganglie")
+end
+
+function sgs.ai_slash_prohibit.nosganglie(self, from, to)
+	if self:isFriend(from, to) then return false end
+	if from:hasSkill("jueqing") or (from:hasSkill("nosqianxi") and from:distanceTo(to) == 1) then return false end
+	if from:hasFlag("NosJiefanUsed") then return false end
+	return from:getHandcardNum() + from:getHp() < 4
+end
+
+sgs.ai_choicemade_filter.skillInvoke.nosganglie = function(self, player, promptlist)
+	local damage = self.room:getTag("CurrentDamageStruct"):toDamage()
+	if damage.from and damage.to then
+		if promptlist[#promptlist] == "yes" then
+			if not self:getDamagedEffects(damage.from, player) and not self:needToLoseHp(damage.from, player) then
+				sgs.updateIntention(damage.to, damage.from, 40)
 			end
+		elseif self:canAttack(damage.from) then
+			sgs.updateIntention(damage.to, damage.from, -40)
 		end
 	end
 end
 
-local function chooseKingdomForPlayer(self, to_modify)
-	local lord = self.room:getLord()
-	local isGood = lord and self:isFriend(lord)
-	if sgs.evaluatePlayerRole(to_modify) == "loyalist" or sgs.evaluatePlayerRole(to_modify) == "renegade" then
-		if isGood then
-			return lord:getKingdom()
-		else
-			-- find a kingdom that is different from the lord
-			if lord then
-				local kingdoms = {"wei", "shu", "wu", "qun"}
-				for _, kingdom in ipairs(kingdoms) do
-					if lord:getKingdom() ~= kingdom then
-						return kingdom
+sgs.ai_skill_use["@@nostuxi"] = function(self, prompt)
+	local targets = self:getTuxiTargets("nostuxi")
+	if #targets > 0 then return "@NosTuxiCard=.->" .. table.concat(targets, "+") end
+	return "."
+end
+
+sgs.ai_card_intention.NosTuxiCard = sgs.ai_card_intention.TuxiCard
+
+sgs.ai_skill_invoke.nosluoyi = function(self, data)
+	if self.player:isSkipped(sgs.Player_Play) then return false end
+	local cards = self.player:getHandcards()
+	cards = sgs.QList2Table(cards)
+	local slashtarget = 0
+	local dueltarget = 0
+	self:sort(self.enemies, "hp")
+	for _, card in ipairs(cards) do
+		if isCard("Slash", card, self.player) then
+			local slash = card:isKindOf("Slash") and card or sgs.Sanguosha:cloneCard("slash", card:getSuit(), card:getNumber())
+			for _, enemy in ipairs(self.enemies) do
+				if self.player:canSlash(enemy, slash, true) and self:slashIsEffective(slash, enemy) and self:objectiveLevel(enemy) > 3 and sgs.isGoodTarget(enemy, self.enemies, self) then
+					if getCardsNum("Jink", enemy, self.player) < 1 or (self.player:hasWeapon("axe") and self.player:getCards("he"):length() > 4) then
+						slashtarget = slashtarget + 1
 					end
 				end
 			end
 		end
-	elseif lord and lord:hasLordSkill("xueyi") and not to_modify:isLord() then
-		return isGood and "qun" or "wei"
-	elseif self.player:hasLordSkill("xueyi") then
-		return "qun"
-	end
-
-	return "wei"
-end
-
-sgs.ai_skill_choice.weiwudi_guixin = function(self, choices)
-	if choices == "wei+shu+wu+qun" then
-		local to_modify = self.room:getTag("Guixin2Modify"):toPlayer()
-		return chooseKingdomForPlayer(self, to_modify)
-	end
-
-	if choices ~= "modify+obtain" then
-		if choices:match("xueyi") and not self.room:getLieges("qun", self.player):isEmpty() then return "xueyi" end
-		if choices:match("ruoyu") then return "ruoyu" end
-		local choice_table = choices:split("+")
-		return choice_table[math.random(1, #choice_table)]
-	end
-
-	-- two choices: modify and obtain
-	if self.player:getRole() == "renegade" or self.player:getRole() == "lord" then
-		return "obtain"
-	end
-
-	local lord = self.room:getLord()
-	local skills = lord:getVisibleSkillList()
-	local hasLordSkill = false
-	for _, skill in sgs.qlist(skills) do
-		if skill:isLordSkill() then
-			hasLordSkill = true
-			break
+		if card:isKindOf("Duel") then
+			local duel = sgs.Sanguosha:cloneCard("duel", card:getSuit(), card:getNumber())
+			for _, enemy in ipairs(self.enemies) do
+				if self:getCardsNum("Slash") >= getCardsNum("Slash", enemy, self.player) and self:hasTrickEffective(duel, enemy)
+					and self:objectiveLevel(enemy) > 3 and not self:cantbeHurt(enemy, self.player, 2) and self:damageIsEffective(enemy) then
+					dueltarget = dueltarget + 1
+				end
+			end
 		end
 	end
-
-	if not hasLordSkill then
-		return "obtain"
-	end
-
-	local players = self.room:getOtherPlayers(self.player)
-	players:removeOne(lord)
-	if findPlayerForModifyKingdom(self, players) then
-		return "modify"
-	else
-		return "obtain"
-	end
+	return slashtarget + dueltarget > 0
 end
 
-sgs.ai_skill_playerchosen.weiwudi_guixin = function(self, players)
-	local player = findPlayerForModifyKingdom(self, players)
-	return player or players:first()
-end
+sgs.ai_cardneed.nosluoyi = sgs.ai_cardneed.luoyi
+sgs.nosluoyi_keep_value = sgs.luoyi_keep_value
 
 local noslijian_skill = {}
 noslijian_skill.name = "noslijian"
 table.insert(sgs.ai_skills, noslijian_skill)
 noslijian_skill.getTurnUseCard = function(self)
-	if self.player:hasUsed("NosLijianCard") or self.player:isNude() then
-		return
-	end
+	if self.player:hasUsed("NosLijianCard") or not self.player:canDiscard(self.player, "he") then return end
 	local card_id = self:getLijianCard()
 	if card_id then return sgs.Card_Parse("@NosLijianCard=" .. card_id) end
 end
@@ -839,11 +865,11 @@ sgs.ai_skill_use_func.NosRendeCard = function(card, use, self)
 
 		if friend:hasSkill("enyuan") and #cards >= 1 and not (self.room:getMode() == "04_1v3" and self.player:getMark("nosrende") == 1) then
 			use.card = sgs.Card_Parse("@NosRendeCard=" .. card:getId() .. "+" .. cards[1]:getId())
-			break
 		else
 			use.card = sgs.Card_Parse("@NosRendeCard=" .. card:getId())
 		end
-		if use.to then use.to:append(friend) return end
+		if use.to then use.to:append(friend) end
+		return
 	end
 
 	if notFound then
@@ -878,8 +904,6 @@ function sgs.ai_cardneed.nosjizhi(to, card)
 end
 
 sgs.nosjizhi_keep_value = sgs.jizhi_keep_value
-
-sgs.ai_chaofeng.nos_huangyueying = sgs.ai_chaofeng.huangyueying
 
 function sgs.ai_skill_invoke.nosjushou(self, data)
 	local sbdiaochan = self.room:findPlayerBySkillName("lihun")
@@ -918,8 +942,6 @@ function sgs.ai_skill_invoke.nosbuqu(self, data)
 	end
 end
 
-sgs.ai_chaofeng.nos_zhoutai = -4
-
 sgs.ai_skill_playerchosen.nosleiji = function(self, targets)
 	local mode = self.room:getMode()
 	if mode:find("_mini_17") or mode:find("_mini_19") or mode:find("_mini_20") or mode:find("_mini_26") then
@@ -951,7 +973,7 @@ function sgs.ai_slash_prohibit.nosleiji(self, from, to, card)
 				break
 			end
 		end
-		if not other_rebel and ((from:getHp() >= 4 and (getCardsNum("Peach", from, to) > 0 or from:hasSkills("ganglie|vsganglie"))) or from:hasSkill("hongyan")) then
+		if not other_rebel and ((from:getHp() >= 4 and (getCardsNum("Peach", from, to) > 0 or from:hasSkills("ganglie|nosganglie|vsganglie"))) or from:hasSkill("hongyan")) then
 			return false
 		end
 	end
@@ -974,7 +996,7 @@ sgs.ai_skill_choice.nosguhuo = function(self, choices)
 	if nosguhuotype and self:getRestCardsNum(nosguhuotype, yuji) == 0 and self.player:getHp() > 0 then return "question" end
 	if nosguhuotype and nosguhuotype == "AmazingGrace" then return "noquestion" end
 	if nosguhuotype:match("Slash") then
-		if yuji:getState() ~= "robot" and math.random(1, 4) == 1 and not sgs.questioner then return "question" end
+		if yuji:getState() ~= "robot" and math.random(1, 4) == 1 and self:isEnemy(yuji) and not sgs.questioner then return "question" end
 		if not self:hasCrossbowEffect(yuji) then return "noquestion" end
 	end
 	if yuji:hasFlag("NosGuhuoFailed") and math.random(1, 6) == 1 and self:isEnemy(yuji) and self.player:getHp() >= 3
@@ -987,8 +1009,7 @@ sgs.ai_skill_choice.nosguhuo = function(self, choices)
 	if self.player:getHp() < 2 and self:getCardsNum("Peach") < 1 and self.room:alivePlayerCount() > 2 then return "noquestion" end
 	if self:isFriend(yuji) then return "noquestion"
 	elseif sgs.questioner then return "noquestion"
-	else
-		if self.player:getHp() < self.friends[#self.friends]:getHp() then return "noquestion" end
+	elseif self.player:getHp() < self.friends[#self.friends]:getHp() then return "noquestion"
 	end
 	if self:needToLoseHp(self.player) and not self.player:hasSkills(sgs.masochism_skill) and x ~= 1 then return "question" end
 
@@ -1008,6 +1029,22 @@ end
 sgs.ai_choicemade_filter.skillChoice.nosguhuo = function(self, player, promptlist)
 	if promptlist[#promptlist] == "question" then
 		sgs.questioner = player
+		local yuji = self.room:findPlayerBySkillName("nosguhuo")
+		if not yuji then return end
+		local nosguhuoname = self.room:getTag("NosGuhuoType"):toString()
+		if nosguhuoname == "peach+analeptic" or nosguhuoname == "peach" then
+			sgs.updateIntention(player, yuji, 80)
+			return
+		end
+		if nosguhuoname == "normal_slash" then nosguhuoname = "slash" end
+		local nosguhuocard = sgs.Sanguosha:cloneCard(nosguhuoname)
+		if nosguhuocard then
+			local nosguhuotype = nosguhuocard:getClassName()
+			if nosguhuotype and self:getRestCardsNum(nosguhuotype, yuji) > 0 then
+				sgs.updateIntention(player, yuji, 80)
+				return
+			end
+		end
 	end
 end
 

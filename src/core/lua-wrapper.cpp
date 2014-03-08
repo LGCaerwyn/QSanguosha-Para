@@ -21,11 +21,12 @@ LuaProhibitSkill::LuaProhibitSkill(const char *name)
 {
 }
 
-LuaViewAsSkill::LuaViewAsSkill(const char *name, const char *response_pattern)
+LuaViewAsSkill::LuaViewAsSkill(const char *name, const char *response_pattern, bool response_or_use)
     : ViewAsSkill(name), view_filter(0), view_as(0),
       enabled_at_play(0), enabled_at_response(0), enabled_at_nullification(0)
 {
     this->response_pattern = response_pattern;
+    this->response_or_use = response_or_use;
 }
 
 LuaFilterSkill::LuaFilterSkill(const char *name)
@@ -47,6 +48,11 @@ LuaTargetModSkill::LuaTargetModSkill(const char *name, const char *pattern)
     : TargetModSkill(name), residue_func(0), distance_limit_func(0), extra_target_func(0)
 {
     this->pattern = pattern;
+}
+
+LuaInvaliditySkill::LuaInvaliditySkill(const char *name)
+    : InvaliditySkill(name)
+{
 }
 
 static QHash<QString, const LuaSkillCard *> LuaSkillCards;

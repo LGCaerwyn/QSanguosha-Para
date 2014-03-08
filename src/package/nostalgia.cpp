@@ -969,6 +969,143 @@ public:
 
 // old stantard generals
 
+class NosGanglie: public MasochismSkill {
+public:
+    NosGanglie(): MasochismSkill("nosganglie") {
+    }
+
+    virtual void onDamaged(ServerPlayer *xiahou, const DamageStruct &damage) const{
+        ServerPlayer *from = damage.from;
+        Room *room = xiahou->getRoom();
+        QVariant data = QVariant::fromValue(damage);
+
+        if (room->askForSkillInvoke(xiahou, "nosganglie", data)) {
+            room->broadcastSkillInvoke("ganglie");
+
+            JudgeStruct judge;
+            judge.pattern = ".|heart";
+            judge.good = false;
+            judge.reason = objectName();
+            judge.who = xiahou;
+
+            room->judge(judge);
+            if (!from || from->isDead()) return;
+            if (judge.isGood()) {
+                if (from->getHandcardNum() < 2 || !room->askForDiscard(from, objectName(), 2, 2, true))
+                    room->damage(DamageStruct(objectName(), xiahou, from));
+            }
+        }
+    }
+};
+
+NosTuxiCard::NosTuxiCard() {
+    mute = true;
+}
+
+bool NosTuxiCard::targetFilter(const QList<const Player *> &targets, const Player *to_select, const Player *Self) const{
+    if (targets.length() >= 2 || to_select == Self)
+        return false;
+
+    return !to_select->isKongcheng();
+}
+
+void NosTuxiCard::onEffect(const CardEffectStruct &effect) const{
+    Room *room = effect.from->getRoom();
+    if (!effect.from->hasFlag("NosTuxiAudioBroadcast")) {
+        room->broadcastSkillInvoke("tuxi");
+        effect.from->setFlags("NosTuxiAudioBroadcast");
+    }
+    if (effect.from->isAlive() && !effect.to->isKongcheng()) {
+        int card_id = room->askForCardChosen(effect.from, effect.to, "h", "tuxi");
+        CardMoveReason reason(CardMoveReason::S_REASON_EXTRACTION, effect.from->objectName());
+        room->obtainCard(effect.from, Sanguosha->getCard(card_id), reason, false);
+    }
+}
+
+class NosTuxiViewAsSkill: public ZeroCardViewAsSkill {
+public:
+    NosTuxiViewAsSkill(): ZeroCardViewAsSkill("nostuxi") {
+        response_pattern = "@@nostuxi";
+    }
+
+    virtual const Card *viewAs() const{
+        return new NosTuxiCard;
+    }
+};
+
+class NosTuxi: public PhaseChangeSkill {
+public:
+    NosTuxi(): PhaseChangeSkill("nostuxi") {
+        view_as_skill = new NosTuxiViewAsSkill;
+    }
+
+    virtual bool onPhaseChange(ServerPlayer *zhangliao) const{
+        if (zhangliao->getPhase() == Player::Draw) {
+            Room *room = zhangliao->getRoom();
+            bool can_invoke = false;
+            QList<ServerPlayer *> other_players = room->getOtherPlayers(zhangliao);
+            foreach (ServerPlayer *player, other_players) {
+                if (!player->isKongcheng()) {
+                    can_invoke = true;
+                    break;
+                }
+            }
+            zhangliao->setFlags("-NosTuxiAudioBroadcast");
+
+            if (can_invoke && room->askForUseCard(zhangliao, "@@nostuxi", "@nostuxi-card"))
+                return true;
+        }
+
+        return false;
+    }
+};
+
+class NosLuoyiBuff: public TriggerSkill {
+public:
+    NosLuoyiBuff(): TriggerSkill("#nosluoyi") {
+        events << DamageCaused;
+    }
+
+    virtual bool triggerable(const ServerPlayer *target) const{
+        return target != NULL && target->hasFlag("nosluoyi") && target->isAlive();
+    }
+
+    virtual bool trigger(TriggerEvent, Room *room, ServerPlayer *xuchu, QVariant &data) const{
+        DamageStruct damage = data.value<DamageStruct>();
+        if (damage.chain || damage.transfer || !damage.by_user) return false;
+        const Card *reason = damage.card;
+        if (reason && (reason->isKindOf("Slash") || reason->isKindOf("Duel"))) {
+            LogMessage log;
+            log.type = "#LuoyiBuff";
+            log.from = xuchu;
+            log.to << damage.to;
+            log.arg = QString::number(damage.damage);
+            log.arg2 = QString::number(++damage.damage);
+            room->sendLog(log);
+
+            data = QVariant::fromValue(damage);
+        }
+
+        return false;
+    }
+};
+
+class NosLuoyi: public DrawCardsSkill {
+public:
+    NosLuoyi(): DrawCardsSkill("nosluoyi") {
+    }
+
+    virtual int getDrawNum(ServerPlayer *xuchu, int n) const{
+        Room *room = xuchu->getRoom();
+        if (room->askForSkillInvoke(xuchu, objectName())) {
+            room->broadcastSkillInvoke("luoyi");
+            xuchu->setFlags(objectName());
+            return n - 1;
+        } else
+            return n;
+    }
+};
+
 NosRendeCard::NosRendeCard() {
     mute = true;
     will_throw = false;
@@ -1547,6 +1684,7 @@ class NosGuhuo: public OneCardViewAsSkill {
 public:
     NosGuhuo(): OneCardViewAsSkill("nosguhuo") {
         filter_pattern = ".|.|.|hand";
+        response_or_use = true;
     }
 
     virtual bool isEnabledAtResponse(const Player *player, const QString &pattern) const{
@@ -1626,18 +1764,33 @@ NostalGeneralPackage::NostalGeneralPackage()
 NostalStandardPackage::NostalStandardPackage()
     : Package("nostal_standard")
 {
+    General *nos_xiahoudun = new General(this, "nos_xiahoudun", "wei");
+    nos_xiahoudun->addSkill(new NosGanglie);
+
+    General *nos_zhangliao = new General(this, "nos_zhangliao", "wei");
+    nos_zhangliao->addSkill(new NosTuxi);
+
+    General *nos_xuchu = new General(this, "nos_xuchu", "wei");
+    nos_xuchu->addSkill(new NosLuoyi);
+    nos_xuchu->addSkill(new NosLuoyiBuff);
+    related_skills.insertMulti("nosluoyi", "#nosluoyi");
+
     General *nos_liubei = new General(this, "nos_liubei$", "shu");
     nos_liubei->addSkill(new NosRende);
     nos_liubei->addSkill("jijiang");
 
-    General *huangyueying = new General(this, "nos_huangyueying", "shu", 3, false);
-    huangyueying->addSkill(new NosJizhi);
-    huangyueying->addSkill(new NosQicai);
+    General *nos_huangyueying = new General(this, "nos_huangyueying", "shu", 3, false);
+    nos_huangyueying->addSkill(new NosJizhi);
+    nos_huangyueying->addSkill(new NosQicai);
+
+    General *nos_lvmeng = new General(this, "nos_lvmeng", "wu");
+    nos_lvmeng->addSkill("keji");
 
     General *nos_diaochan = new General(this, "nos_diaochan", "qun", 3, false);
     nos_diaochan->addSkill(new NosLijian);
     nos_diaochan->addSkill("biyue");
 
+    addMetaObject<NosTuxiCard>();
     addMetaObject<NosRendeCard>();
     addMetaObject<NosLijianCard>();
 }

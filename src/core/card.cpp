@@ -77,7 +77,7 @@ int Card::getNumber() const{
             foreach (int id, subcards) {
                 num += Sanguosha->getCard(id)->getNumber();
             }
-            return num;
+            return qMin(num, 13);
         }
     } else
         return m_number;
@@ -468,7 +468,7 @@ const Card *Card::Parse(const QString &str) {
             suit = dummy->getSuit();
         else
             suit = suit_map.value(suit_string, Card::NoSuit);
-        dummy->deleteLater();
+        delete dummy;
 
         int number = 0;
         if (number_string == "A")

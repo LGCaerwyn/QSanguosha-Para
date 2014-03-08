@@ -66,7 +66,7 @@ void Settings::init() {
                        << "nostal_standard" << "nostal_general" << "nostal_wind"
                        << "nostal_yjcm" << "nostal_yjcm2012"
                        << "test" << "GreenHand" << "dragon"
-                       << "sp_cards" << "Special1v1OL" << "GreenHandCard"
+                       << "sp_cards" << "GreenHandCard"
                        << "New3v3Card" << "New3v3_2013Card" << "New1v1Card";
     }
     setValue("BanPackages", banpackagelist);
@@ -159,22 +159,6 @@ void Settings::init() {
             banlist << ban_general;
 
         setValue("Banlist/1v1", banlist);
-    }
-
-    banlist = value("Banlist/HulaoPass").toStringList();
-    if (banlist.isEmpty()) {
-        foreach (QString ban_general, hulao_ban)
-            banlist << ban_general;
-
-        setValue("Banlist/HulaoPass", banlist);
-    }
-
-    banlist = value("Banlist/XMode").toStringList();
-    if (banlist.isEmpty()) {
-        foreach (QString ban_general, xmode_ban)
-            banlist << ban_general;
-
-        setValue("Banlist/XMode", banlist);
     }
 
     banlist = value("Banlist/Basara").toStringList();

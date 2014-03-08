@@ -77,13 +77,10 @@ sgs.ai_skill_choice.drowning = function(self, choices, data)
 end
 
 sgs.ai_skill_playerchosen.koftuxi = function(self, targets)
-	local cardstr = sgs.ai_skill_use["@@tuxi"](self, "@tuxi")
-	if cardstr:match("->") then
-		local targetstr = cardstr:split("->")[2]:split("+")
-		if #targetstr > 0 then
-			local target = findPlayerByObjectName(self.room, targetstr[1])
-			return target
-		end
+	local targetstr = self:getTuxiTargets("koftuxi", true)
+	if #targetstr > 0 then
+		local target = findPlayerByObjectName(self.room, targetstr[1])
+		return target
 	end
 	return nil
 end
@@ -107,15 +104,13 @@ sgs.ai_playerchosen_intention.koftuxi = function(self, from, to)
 	end
 end
 
-sgs.ai_chaofeng.kof_zhangliao = 4
-
 xiechan_skill = {}
 xiechan_skill.name = "xiechan"
 table.insert(sgs.ai_skills, xiechan_skill)
 xiechan_skill.getTurnUseCard = function(self)
 	if self.player:getMark("@twine") <= 0 then return end
 	self:sort(self.enemies, "handcard")
-	if self.player:hasSkill("luoyi") and not self.player:hasFlag("luoyi") then return end
+	if self.player:hasSkill("nosluoyi") and not self.player:hasFlag("nosluoyi") then return end
 	return sgs.Card_Parse("@XiechanCard=.")
 end
 

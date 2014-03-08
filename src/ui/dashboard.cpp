@@ -27,7 +27,8 @@ Dashboard::Dashboard(QGraphicsItem *widget)
     _m_rightFrameBg = NULL;
     animations = new EffectAnimation();
     pending_card = NULL;
-    for (int i = 0; i < 4; i++) {
+    _m_pile_expanded = QStringList();
+    for (int i = 0; i < 5; i++) {
         _m_equipSkillBtns[i] = NULL;
         _m_isEquipsAnimOn[i] = false;
     }
@@ -121,7 +122,7 @@ void Dashboard::_adjustComponentZValues(bool killed) {
     _layUnder(_m_leftFrame);
     _layUnder(_m_middleFrame);    
     _layBetween(button_widget, _m_middleFrame, _m_roleComboBox);
-    _layBetween(_m_rightFrameBg, _m_faceTurnedIcon, _m_equipRegions[3]);
+    _layBetween(_m_rightFrameBg, _m_faceTurnedIcon, _m_equipRegions[4]);
 }
 
 int Dashboard::width() {
@@ -224,7 +225,7 @@ void Dashboard::addHandCards(QList<CardItem *> &card_items) {
     updateHandcardNum();
 }
 
-void Dashboard::_addHandCard(CardItem *card_item) {
+void Dashboard::_addHandCard(CardItem *card_item, bool prepend, const QString &footnote) {
     if (ClientInstance->getStatus() == Client::Playing)
         card_item->setEnabled(card_item->getCard()->isAvailable(Self));
     else
@@ -234,7 +235,14 @@ void Dashboard::_addHandCard(CardItem *card_item) {
     card_item->setRotation(0.0);
     card_item->setFlags(ItemIsFocusable);
     card_item->setZValue(0.1);
-    m_handCards << card_item;
+    if (!footnote.isEmpty()) {
+        card_item->setFootnote(footnote);
+        card_item->showFootnote();
+    }
+    if (prepend)
+        m_handCards.prepend(card_item);
+    else
+        m_handCards.append(card_item);
 
     connect(card_item, SIGNAL(clicked()), this, SLOT(onCardItemClicked()));
     connect(card_item, SIGNAL(double_clicked()), this, SLOT(onCardItemDoubleClicked()));
@@ -301,7 +309,7 @@ void Dashboard::selectOnlyCard(bool need_only) {
     }
 
     QList<int> equip_pos;
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 5; i++) {
         if (_m_equipCards[i] && _m_equipCards[i]->isMarkable()) {
             equip_pos << i;
             count++;
@@ -354,7 +362,7 @@ void Dashboard::unselectAll(const CardItem *except) {
     }
 
     adjustCards(true);
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 5; i++) {
         if (_m_equipCards[i] && _m_equipCards[i] != except)
             _m_equipCards[i]->mark(false);
     }
@@ -380,7 +388,7 @@ QSanSkillButton *Dashboard::addSkillButton(const QString &skillName) {
     // if it's a equip skill, add it to equip bar
     _mutexEquipAnim.lock();
 
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 5; i++) {
         if (!_m_equipCards[i]) continue;
         const EquipCard *equip = qobject_cast<const EquipCard *>(_m_equipCards[i]->getCard()->getRealCard());
         Q_ASSERT(equip);
@@ -404,7 +412,7 @@ QSanSkillButton *Dashboard::addSkillButton(const QString &skillName) {
     _mutexEquipAnim.unlock();
 #ifndef QT_NO_DEBUG
     const Skill *skill = Sanguosha->getSkill(skillName);
-    Q_ASSERT(skill && !skill->inherits("WeaponSkill") && !skill->inherits("ArmorSkill"));
+    Q_ASSERT(skill && !skill->inherits("WeaponSkill") && !skill->inherits("ArmorSkill") && !skill->inherits("TreasureSkill"));
 #endif
     if (_m_skillDock->getSkillButtonByName(skillName) != NULL) {
         _m_button_recycle.append(_m_skillDock->getSkillButtonByName(skillName));
@@ -416,7 +424,7 @@ QSanSkillButton *Dashboard::addSkillButton(const QString &skillName) {
 QSanSkillButton *Dashboard::removeSkillButton(const QString &skillName) {
     QSanSkillButton *btn = NULL;
     _mutexEquipAnim.lock();
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 5; i++) {
         if (!_m_equipSkillBtns[i]) continue;
         const Skill *skill = _m_equipSkillBtns[i]->getSkill();
         Q_ASSERT(skill != NULL);
@@ -439,12 +447,12 @@ QSanSkillButton *Dashboard::removeSkillButton(const QString &skillName) {
 
 void Dashboard::highlightEquip(QString skillName, bool highlight) {
     int i = 0;
-    for (i = 0; i < 4; i++) {
+    for (i = 0; i < 5; i++) {
         if (!_m_equipCards[i]) continue;
         if (_m_equipCards[i]->getCard()->objectName() == skillName)
             break;
     }
-    if (i != 4)
+    if (i != 5)
         _setEquipBorderAnimation(i, highlight);
 }
 
@@ -475,7 +483,7 @@ void Dashboard::skillButtonActivated() {
             btn->setState(QSanButton::S_STATE_UP);
     }
 
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 5; i++) {
         if (button == _m_equipSkillBtns[i]) continue;
 
         if (_m_equipSkillBtns[i] != NULL)
@@ -489,7 +497,7 @@ void Dashboard::skillButtonDeactivated() {
             btn->setState(QSanButton::S_STATE_UP);
     }
     
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 5; i++) {
         if (_m_equipSkillBtns[i] != NULL) {
             _m_equipSkillBtns[i]->setEnabled(true);
             if (_m_equipSkillBtns[i]->isDown())
@@ -499,6 +507,7 @@ void Dashboard::skillButtonDeactivated() {
 }
 
 void Dashboard::selectAll() {
+    retractPileCards("wooden_ox");
     if (view_as_skill) {
         unselectAll();
         foreach (CardItem *card_item, m_handCards) {
@@ -519,7 +528,7 @@ void Dashboard::mouseReleaseEvent(QGraphicsSceneMouseEvent *mouseEvent) {
 
     CardItem *to_select = NULL;
     int i;
-    for (i = 0; i < 4; i++) {
+    for (i = 0; i < 5; i++) {
         if (_m_equipRegions[i]->isUnderMouse()) {
             to_select = _m_equipCards[i];
             break;
@@ -541,7 +550,7 @@ void Dashboard::mouseReleaseEvent(QGraphicsSceneMouseEvent *mouseEvent) {
 void Dashboard::_onEquipSelectChanged() {
     QSanSkillButton *btn = qobject_cast<QSanSkillButton *>(sender());
     if (btn) {
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 5; i++) {
             if (_m_equipSkillBtns[i] == btn) {
                 _setEquipBorderAnimation(i, btn->isDown());
                 break;
@@ -553,7 +562,7 @@ void Dashboard::_onEquipSelectChanged() {
         // sources that could select equip has not been considered and must
         // be implemented.
         Q_ASSERT(equip);
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 5; i++) {
             if (_m_equipCards[i] == equip) {
                 _setEquipBorderAnimation(i, equip->isMarked());
                 break;
@@ -563,7 +572,7 @@ void Dashboard::_onEquipSelectChanged() {
 }
 
 void Dashboard::_createEquipBorderAnimations() {
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 5; i++) {
         _m_equipBorders[i] = new PixmapAnimation();
         _m_equipBorders[i]->setParentItem(_getEquipParent());
         _m_equipBorders[i]->setPath("image/system/emotion/equipborder/");
@@ -831,6 +840,7 @@ void Dashboard::disableAllCards() {
 
 void Dashboard::enableCards() {
     m_mutexEnableCards.lock();
+    expandPileCards("wooden_ox");
     foreach (CardItem *card_item, m_handCards)
         card_item->setEnabled(card_item->getCard()->isAvailable(Self));
     m_mutexEnableCards.unlock();
@@ -849,7 +859,21 @@ void Dashboard::startPending(const ViewAsSkill *skill) {
     pendings.clear();
     unselectAll();
 
-    for (int i = 0; i < 4; i++) {
+    bool expand = (skill && skill->isResponseOrUse());
+    if (!expand && skill && skill->inherits("ResponseSkill")) {
+        const ResponseSkill *resp_skill = qobject_cast<const ResponseSkill *>(skill);
+        if (resp_skill && (resp_skill->getRequest() == Card::MethodResponse || resp_skill->getRequest() == Card::MethodUse))
+            expand = true;
+    }
+    if (expand)
+        expandPileCards("wooden_ox");
+    else {
+        retractPileCards("wooden_ox");
+        if (skill && skill->objectName() == "jixi")
+            expandPileCards("field");
+    }
+
+    for (int i = 0; i < 5; i++) {
         if (_m_equipCards[i] != NULL)
             connect(_m_equipCards[i], SIGNAL(mark_changed()), this, SLOT(onMarkChanged()));
     }
@@ -860,12 +884,17 @@ void Dashboard::startPending(const ViewAsSkill *skill) {
 
 void Dashboard::stopPending() {
     m_mutexEnableCards.lock();
-    if (view_as_skill && view_as_skill->objectName().contains("guhuo")) {
-        foreach (CardItem *item, m_handCards)
-            item->hideFootnote();
+    if (view_as_skill) {
+        if (view_as_skill->objectName().contains("guhuo")) {
+            foreach (CardItem *item, m_handCards)
+                item->hideFootnote();
+        } else if (view_as_skill->objectName() == "jixi") {
+            retractPileCards("field");
+        }
     }
     view_as_skill = NULL;
     pending_card = NULL;
+    retractPileCards("wooden_ox");
     emit card_selected(NULL);
 
     foreach (CardItem *item, m_handCards) {
@@ -873,7 +902,7 @@ void Dashboard::stopPending() {
         animations->effectOut(item);
     }
 
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 5; i++) {
         CardItem *equip = _m_equipCards[i];
         if (equip != NULL) {
             equip->mark(false);
@@ -886,6 +915,44 @@ void Dashboard::stopPending() {
     pendings.clear();
     adjustCards(true);
     m_mutexEnableCards.unlock();
+}
+
+void Dashboard::expandPileCards(const QString &pile_name) {
+    if (_m_pile_expanded.contains(pile_name)) return;
+    _m_pile_expanded << pile_name;
+    QList<int> pile = Self->getPile(pile_name);
+    if (pile.isEmpty()) return;
+    QList<CardItem *> card_items = _createCards(pile);
+    foreach (CardItem *card_item, card_items) {
+        card_item->setPos(mapFromScene(card_item->scenePos()));
+        card_item->setParentItem(this);
+    }
+    foreach (CardItem *card_item, card_items)
+        _addHandCard(card_item, true, Sanguosha->translate(pile_name));
+    adjustCards();
+    _playMoveCardsAnimation(card_items, false);
+    update();
+}
+
+void Dashboard::retractPileCards(const QString &pile_name) {
+    if (!_m_pile_expanded.contains(pile_name)) return;
+    _m_pile_expanded.removeOne(pile_name);
+    QList<int> pile = Self->getPile(pile_name);
+    if (pile.isEmpty()) return;
+    CardItem *card_item;
+    foreach (int card_id, Self->getPile(pile_name)) {
+        card_item = CardItem::FindItem(m_handCards, card_id);
+        if (card_item == selected) selected = NULL;
+        Q_ASSERT(card_item);
+        if (card_item) {
+            m_handCards.removeOne(card_item);
+            card_item->disconnect(this);
+            delete card_item;
+            card_item = NULL;
+        }
+    }
+    adjustCards();
+    update();
 }
 
 void Dashboard::onCardItemClicked() {
@@ -935,7 +1002,7 @@ void Dashboard::updatePending() {
             animations->effectOut(item);
     }
 
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 5; i++) {
         CardItem *equip = _m_equipCards[i];
         if (equip && !equip->isMarked())
             equip->setMarkable(view_as_skill->viewFilter(pended, equip->getCard()));

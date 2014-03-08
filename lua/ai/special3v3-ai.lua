@@ -45,7 +45,7 @@ sgs.ai_skill_askforag.huanshi = function(self, card_ids)
 	local zhugejin = self.room:findPlayerBySkillName("huanshi")
 
 	local cmp = function(a, b)
-		local a_keep_value, b_keep_value = sgs.ai_keep_value[a:getClassName()], sgs.ai_keep_value[b:getClassName()]
+		local a_keep_value, b_keep_value = sgs.ai_keep_value[a:getClassName()] or 0, sgs.ai_keep_value[b:getClassName()] or 0
 		a_keep_value = a_keep_value + a:getNumber() / 100
 		b_keep_value = b_keep_value + b:getNumber() / 100
 		if zhugejin and zhugejin:hasSkill("mingzhe") then
@@ -171,7 +171,7 @@ sgs.ai_skill_playerchosen.vsganglie = function(self, targets)
 	if self.room:getMode() == "06_3v3" or self.room:getMode() == "06_XMode" then return nil end
 	for _, friend in ipairs(self.friends_noself) do
 		if self:damageIsEffective(friend, sgs.DamageStruct_Normal, friend) and not self:cantbeHurt(friend) and self:getDamagedEffects(friend, self.player) then
-			sgs.ai_ganglie_effect = string.format("%s_%s_%d", self.player:objectName(), friend:objectName(), sgs.turncount)
+			sgs.ai_nosganglie_effect = string.format("%s_%s_%d", self.player:objectName(), friend:objectName(), sgs.turncount)
 			return friend
 		end
 	end
@@ -200,7 +200,7 @@ sgs.ai_need_damaged.vsganglie = function(self, attacker, player)
 end
 
 sgs.ai_skill_discard.vsganglie = function(self, discard_num, min_num, optional, include_equip)
-	return ganglie_discard(self, discard_num, min_num, optional, include_equip, "vsganglie")
+	return nosganglie_discard(self, discard_num, min_num, optional, include_equip, "vsganglie")
 end
 
 function sgs.ai_slash_prohibit.vsganglie(self, from, to)

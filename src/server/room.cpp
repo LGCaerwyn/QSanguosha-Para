@@ -1482,6 +1482,8 @@ void Room::addPlayerHistory(ServerPlayer *player, const QString &key, int times)
     if (player) {
         if (key == ".")
             player->clearHistory();
+        else if (times == 0)
+            player->clearHistory(key);
         else
             player->addHistory(key, times);
     }
@@ -1755,7 +1757,7 @@ void Room::resetAI(ServerPlayer *player) {
     if (smart_ai) {
         index = ais.indexOf(smart_ai);
         ais.removeOne(smart_ai);
-        smart_ai->deleteLater();
+        delete smart_ai;
     }
     AI *new_ai = cloneAI(player);
     player->setAI(new_ai);
@@ -2483,21 +2485,25 @@ void Room::run() {
         ServerPlayer *lord = m_players.first();
         setPlayerProperty(lord, "general", "shenlvbu1");
 
-        QList<const General *> generals = QList<const General *>();
-        foreach (QString pack_name, GetConfigFromLuaState(Sanguosha->getLuaState(), "hulao_packages").toStringList()) {
-             const Package *pack = Sanguosha->findChild<const Package *>(pack_name);
-             if (pack) generals << pack->findChildren<const General *>();
-        }
-
         QStringList names;
-        foreach (const General *general, generals) {
-            if (general->isTotallyHidden())
-                continue;
-            names << general->objectName();
+        foreach (QString gen_name, GetConfigFromLuaState(Sanguosha->getLuaState(), "hulao_generals").toStringList()) {
+            if (gen_name.startsWith("-")) { // means banned generals
+                names.removeOne(gen_name.mid(1));
+            } else if (gen_name.startsWith("package:")) {
+                QString pack_name = gen_name.mid(8);
+                const Package *pack = Sanguosha->findChild<const Package *>(pack_name);
+                if (pack) {
+                    foreach (const General *general, pack->findChildren<const General *>()) {
+                        if (general->isTotallyHidden())
+                            continue;
+                        if (!names.contains(general->objectName()))
+                            names << general->objectName();
+                    }
+                }
+            } else if (!names.contains(gen_name)) {
+                names << gen_name;
+            }
         }
-
-        foreach (QString name, Config.value("Banlist/HulaoPass").toStringList())
-            if (names.contains(name)) names.removeOne(name);
 
         foreach (ServerPlayer *player, m_players) {
             if (player == lord)
@@ -3097,39 +3103,46 @@ void Room::damage(const DamageStruct &data) {
         damage_data = qdata.value<DamageStruct>();
     }
 
+#define REMOVE_QINGGANG_TAG if (damage_data.card && damage_data.card->isKindOf("Slash")) damage_data.to->removeQinggangTag(damage_data.card);
+
     // Predamage
     if (thread->trigger(Predamage, this, damage_data.from, qdata)) {
-        if (damage_data.card && damage_data.card->isKindOf("Slash"))
-            damage_data.to->removeQinggangTag(damage_data.card);
+        REMOVE_QINGGANG_TAG
         return;
     }
 
     try {
         bool enter_stack = false;
         do {
-            bool prevent = thread->trigger(DamageForseen, this, damage_data.to, qdata);
-            if (prevent)
+            if (thread->trigger(DamageForseen, this, damage_data.to, qdata)) {
+                REMOVE_QINGGANG_TAG
                 break;
+            }
 
             if (damage_data.from) {
-                if (thread->trigger(DamageCaused, this, damage_data.from, qdata))
+                if (thread->trigger(DamageCaused, this, damage_data.from, qdata)) {
+                    REMOVE_QINGGANG_TAG
                     break;
+                }
             }
 
             damage_data = qdata.value<DamageStruct>();
-
-            bool broken = thread->trigger(DamageInflicted, this, damage_data.to, qdata);
-            if (broken)
+            damage_data.to->tag.remove("TransferDamage");
+            if (thread->trigger(DamageInflicted, this, damage_data.to, qdata)) {
+                REMOVE_QINGGANG_TAG
+                // Make sure that the trigger in which 'TransferDamage' tag is set returns TRUE
+                DamageStruct transfer_damage_data = damage_data.to->tag["TransferDamage"].value<DamageStruct>();
+                if (transfer_damage_data.to)
+                    damage(transfer_damage_data);
                 break;
+            }
 
             enter_stack = true;
             m_damageStack.push_back(damage_data);
             setTag("CurrentDamageStruct", qdata);
 
             thread->trigger(PreDamageDone, this, damage_data.to, qdata);
-
-            if (damage_data.card && damage_data.card->isKindOf("Slash"))
-                damage_data.to->removeQinggangTag(damage_data.card);
+            REMOVE_QINGGANG_TAG
             thread->trigger(DamageDone, this, damage_data.to, qdata);
 
             if (damage_data.from && !damage_data.from->hasFlag("Global_DebutFlag"))
@@ -3138,10 +3151,13 @@ void Room::damage(const DamageStruct &data) {
             if (!damage_data.to->hasFlag("Global_DebutFlag"))
                 thread->trigger(Damaged, this, damage_data.to, qdata);
         } while (false);
+#undef REMOVE_QINGGANG_TAG
 
-        if (!enter_stack)
-            setTag("SkipGameRule", true);
         damage_data = qdata.value<DamageStruct>();
+        if (!enter_stack) {
+            damage_data.prevented = true;
+            qdata = QVariant::fromValue(damage_data);
+        }
         thread->trigger(DamageComplete, this, damage_data.to, qdata);
 
         if (enter_stack) {
@@ -3979,6 +3995,13 @@ bool Room::notifyMoveCards(bool isLostPhase, QList<CardsMoveStruct> cards_moves,
         Json::Value arg(Json::arrayValue);
         arg[0] = moveId;
         for (int i = 0; i < cards_moves.size(); i++) {
+            ServerPlayer *to = NULL;
+            foreach (ServerPlayer *player, m_players) {
+                if (player->objectName() == cards_moves[i].to_player_name) {
+                    to = player;
+                    break;
+                }
+            }
             cards_moves[i].open = forceVisible || cards_moves[i].isRelevant(player)
                                   // forceVisible will override cards to be visible
                                   || cards_moves[i].to_place == Player::PlaceEquip
@@ -3992,6 +4015,9 @@ bool Room::notifyMoveCards(bool isLostPhase, QList<CardsMoveStruct> cards_moves,
                                   || cards_moves[i].from_place == Player::PlaceTable
                                   || cards_moves[i].to_place == Player::PlaceTable
                                   // any card from/to place table should be visible
+                                  || (cards_moves[i].to_place == Player::PlaceSpecial
+                                      && to && to->pileOpen(cards_moves[i].to_pile_name, player->objectName()))
+                                  // pile open to specific players
                                   || player->hasFlag("Global_GongxinOperator");
                                   // the player put someone's cards to the drawpile
             arg[i + 1] = cards_moves[i].toJsonValue();
@@ -4556,8 +4582,7 @@ bool Room::askForDiscard(ServerPlayer *player, const QString &reason, int discar
     data = QString("%1:%2").arg("cardDiscard").arg(dummy_card->toString());
     thread->trigger(ChoiceMade, this, player, data);
 
-    dummy_card->deleteLater();
-
+    delete dummy_card;
     return true;
 }
 
@@ -4714,6 +4739,14 @@ void Room::askForGuanxing(ServerPlayer *zhuge, const QList<int> &cards, Guanxing
     while (i.hasNext())
         m_drawPile->append(i.next());
 
+    doBroadcastNotify(S_COMMAND_UPDATE_PILE, Json::Value(m_drawPile->length()));
+}
+
+void Room::returnToTopDrawPile(const QList<int> &cards) {
+    QListIterator<int> i(cards);
+    i.toBack();
+    while (i.hasPrevious())
+        m_drawPile->prepend(i.previous());
     doBroadcastNotify(S_COMMAND_UPDATE_PILE, Json::Value(m_drawPile->length()));
 }
 

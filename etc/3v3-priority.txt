@@ -1,8 +1,8 @@
 caocao					5
 simayi					7
-xiahoudun				3
-zhangliao				9
-xuchu					5
+nos_xiahoudun			3
+nos_zhangliao			9
+nos_xuchu				5
 guojia					9
 zhenji					5
 xiahouyuan				4
@@ -18,7 +18,7 @@ huangzhong				4
 weiyan					2
 sunquan					7
 ganning					6
-lvmeng					2
+nos_lvmeng				2
 huanggai				6
 zhouyu					6
 daqiao					6
