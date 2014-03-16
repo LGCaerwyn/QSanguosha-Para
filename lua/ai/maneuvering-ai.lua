@@ -54,6 +54,9 @@ fan_skill.name = "fan"
 table.insert(sgs.ai_skills, fan_skill)
 fan_skill.getTurnUseCard = function(self)
 	local cards = self.player:getCards("h")
+	for _, id in sgs.qlist(self.player:getPile("wooden_ox")) do
+		cards:append(sgs.Sanguosha:getCard(id))
+	end
 	cards = sgs.QList2Table(cards)
 	local slash_card
 
@@ -229,14 +232,15 @@ function SmartAI:useCardSupplyShortage(card, use)
 
 		local value = 0 - enemy:getHandcardNum()
 
-		if enemy:hasSkills("yongsi|haoshi|tuxi|nostuxi|noslijian|lijian|fanjian|dimeng|jijiu|jieyin|beige") or (enemy:hasSkill("zaiqi") and enemy:getLostHp() > 1) then
+		if enemy:hasSkills("yongsi|haoshi|tuxi|nostuxi|noslijian|lijian|fanjian|nosfanjian|dimeng|jijiu|jieyin|beige")
+			or (enemy:hasSkill("zaiqi") and enemy:getLostHp() > 1) then
 			value = value + 10
 		end
 		if enemy:hasSkills(sgs.cardneed_skill .. "|zhaolie|tianxiang|qinyin|yanxiao|zhaoxin|renjie+baiyin") then
 			value = value + 5
 		end
 		if enemy:hasSkill("dujin") then value = value + math.floor(enemy:getEquips():length() / 2 + 1) end
-		if enemy:hasSkills("yingzi|shelie|xuanhuo|buyi|jujian|jiangchi|mizhao|hongyuan|chongzhen+longdan|duoshi") then value = value + 1 end
+		if enemy:hasSkills("yingzi|nosyingzi|shelie|xuanhuo|buyi|jujian|jiangchi|mizhao|hongyuan|chongzhen+longdan|duoshi") then value = value + 1 end
 		if enemy:hasSkill("zishou") then value = value + enemy:getLostHp() end
 		if self:isWeak(enemy) then value = value + 5 end
 		if enemy:isLord() then value = value + 3 end
@@ -412,7 +416,7 @@ end
 
 
 function SmartAI:useCardIronChain(card, use)
-	local needTarget = (card:getSkillName() == "guhuo" or card:getSkillName() == "nosguhuo" or card:getSkillName() == "qice")
+	local needTarget = ((use.isDummy and not use.canRecast) or card:getSkillName() == "guhuo" or card:getSkillName() == "nosguhuo" or card:getSkillName() == "qice")
 	if not (self.player:hasSkill("noswuyan") and needTarget) then use.card = card end
 	if not needTarget then
 		if self.player:hasSkill("noswuyan") then return end
@@ -625,12 +629,13 @@ function SmartAI:useCardFireAttack(fire_attack, use)
 		if self.player:hasFlag("FireAttackFailed_" .. enemy:objectName()) then
 			return false
 		end
+		if enemy:hasSkill("qianxun") then return false end
 		local damage = 1
 		if not self.player:hasSkill("jueqing") and not enemy:hasArmorEffect("silver_lion") then
 			if enemy:hasArmorEffect("vine") then damage = damage + 1 end
 			if enemy:getMark("@gale") > 0 then damage = damage + 1 end
 		end
-		if not self.player:hasSkill("jueqing") and enemy:hasSkill("mingshi") and self.player:getEquips():length() <= enemy:getEquips():length() then
+		if not self.player:hasSkill("jueqing") and enemy:hasSkill("mingshi") and self.player:getEquips():length() <= math.min(2, enemy:getEquips():length()) then
 			damage = damage - 1
 		end
 		return self:objectiveLevel(enemy) > 3 and damage > 0 and not enemy:isKongcheng() and not self.room:isProhibited(self.player, enemy, fire_attack)
@@ -638,7 +643,7 @@ function SmartAI:useCardFireAttack(fire_attack, use)
 				and self:hasTrickEffective(fire_attack, enemy)
 				and sgs.isGoodTarget(enemy, self.enemies, self)
 				and (self.player:hasSkill("jueqing")
-					or (not (enemy:hasSkill("jianxiong") and not self:isWeak(enemy))
+					or (not (enemy:hasSkills("jianxiong|nosjianxionh") and not self:isWeak(enemy))
 						and not (self:getDamagedEffects(enemy, self.player))
 						and not (enemy:isChained() and not self:isGoodChainTarget(enemy, self.player, sgs.DamageStruct_Fire, nil, fire_attack))))
 	end
@@ -660,7 +665,7 @@ function SmartAI:useCardFireAttack(fire_attack, use)
 
 	if (not use.current_targets or not table.contains(use.current_targets, self.player:objectName()))
 		and self.role ~= "renegade" and can_FireAttack_self and self.player:isChained() and self:isGoodChainTarget(self.player, sgs.DamageStruct_Fire, nil, fire_attack)
-		and self.player:getHandcardNum() > 1 and not self.player:hasSkill("jueqing") and not self.player:hasSkill("mingshi")
+		and self.player:getHandcardNum() > 1 and not self.player:hasSkill("jueqing") and not (self.player:hasSkill("mingshi") and self.player:getEquips():length() <= 2)
 		and not self.room:isProhibited(self.player, self.player, fire_attack)
 		and self:damageIsEffective(self.player, sgs.DamageStruct_Fire, self.player) and not self:cantbeHurt(self.player)
 		and self:hasTrickEffective(fire_attack, self.player) then
@@ -704,7 +709,7 @@ function SmartAI:useCardFireAttack(fire_attack, use)
 			if enemy:hasArmorEffect("vine") then damage = damage + 1 end
 			if enemy:getMark("@gale") > 0 then damage = damage + 1 end
 		end
-		if not self.player:hasSkill("jueqing") and enemy:hasSkill("mingshi") and self.player:getEquips():length() <= enemy:getEquips():length() then
+		if not self.player:hasSkill("jueqing") and enemy:hasSkill("mingshi") and self.player:getEquips():length() <= math.min(2, enemy:getEquips():length()) then
 			damage = damage - 1
 		end
 		if (not use.current_targets or not table.contains(use.current_targets, enemy:objectName()))

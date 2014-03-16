@@ -422,8 +422,8 @@ sgs.ai_skill_invoke.haoshi = function(self, data)
 		extra = extra + #kingdoms
 	end
 	local draw_skills = {
-						["yingzi"] = 1, ["zishou"] = self.player:getLostHp(), ["shenwei"] = 2, ["juejing"] = self.player:getLostHp(),
-						["luoyi"] = -1, ["zhaolie"] = -1, ["hongyuan"] = -1, ["dujin"] = math.floor(self.player:getEquips():length() / 2 + 1)
+						["yingzi"] = 1, ["nosyingzi"] = 1, ["zishou"] = self.player:getLostHp(), ["shenwei"] = 2, ["juejing"] = self.player:getLostHp(),
+						["nosluoyi"] = -1, ["zhaolie"] = -1, ["hongyuan"] = -1, ["dujin"] = math.floor(self.player:getEquips():length() / 2 + 1)
 						}
 	for skill_name, n in ipairs(draw_skills) do
 		if self.player:hasSkill(skill_name) then
@@ -735,6 +735,9 @@ jiuchi_skill.name = "jiuchi"
 table.insert(sgs.ai_skills, jiuchi_skill)
 jiuchi_skill.getTurnUseCard = function(self)
 	local cards = self.player:getCards("h")
+	for _, id in sgs.qlist(self.player:getPile("wooden_ox")) do
+		cards:append(sgs.Sanguosha:getCard(id))
+	end
 	cards = sgs.QList2Table(cards)
 
 	local card

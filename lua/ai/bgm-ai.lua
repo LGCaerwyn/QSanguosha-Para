@@ -108,7 +108,7 @@ sgs.ai_skill_use_func.LihunCard = function(card, use, self)
 		local jwfy = self.room:findPlayerBySkillName("shoucheng")
 		for _, enemy in ipairs(self.enemies) do
 			if enemy:isMale() and not enemy:isKongcheng() and not enemy:hasSkill("kongcheng") then
-				if ((enemy:hasSkill("lianying") or (jwfy and self:isFriend(jwfy, enemy))) and self:damageMinusHp(self, enemy, 1) > 0)
+				if ((enemy:hasSkills("lianying|noslianying") or (jwfy and self:isFriend(jwfy, enemy))) and self:damageMinusHp(self, enemy, 1) > 0)
 					or (enemy:getHp() < 3 and self:damageMinusHp(self, enemy, 0) > 0 and enemy:getHandcardNum() > 0)
 					or (enemy:getHandcardNum() >= enemy:getHp() and enemy:getHp() > 2 and self:damageMinusHp(self, enemy, 0) >= -1)
 					or (enemy:getHandcardNum() - enemy:getHp() > 2) then
@@ -501,7 +501,7 @@ local function will_discard_zhaolie(self, nobasic)
 			local willTianxiang = sgs.ai_skill_use["@@tianxiang"](self, dmgStr, sgs.Card_MethodDiscard)
 			if willTianxiang ~= "." then damage_num = 0 end
 		end
-		if self.player:hasSkill("mingshi") and spliubei:getEquips():length() <= self.player:getEquips():length() and damage_num > 0 then
+		if self.player:hasSkill("mingshi") and spliubei:getEquips():length() <= math.min(2, self.player:getEquips():length()) and damage_num > 0 then
 			damage_num = damage_num - 1
 		end
 		if self.player:hasArmorEffect("silver_lion") and damage_num > 1 then damage_num = 1 end
@@ -648,7 +648,6 @@ sgs.ai_skill_use_func.YanxiaoCard = function(card, use, self)
 	local players = self.room:getOtherPlayers(self.player)
 	self:sort(self.friends_noself, "defense")
 	for _, friend in ipairs(self.friends_noself) do
-		local judges = friend:getJudgingArea()
 		local need_yanxiao = (friend:containsTrick("lightning") and self:getFinalRetrial(friend) == 2)
 							or friend:containsTrick("indulgence") or friend:containsTrick("supply_shortage")
 		if need_yanxiao and not friend:containsTrick("YanxiaoCard") then
@@ -671,7 +670,6 @@ sgs.ai_skill_use_func.YanxiaoCard = function(card, use, self)
 		end
 
 		for _, friend in ipairs(self.friends_noself) do
-			local judges = friend:getJudgingArea()
 			if not friend:containsTrick("YanxiaoCard") then
 				use.card = card
 				if use.to then use.to:append(friend) end

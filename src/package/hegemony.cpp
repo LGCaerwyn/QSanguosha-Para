@@ -203,7 +203,7 @@ public:
     virtual bool trigger(TriggerEvent , Room *room, ServerPlayer *player, QVariant &data) const{
         DamageStruct damage = data.value<DamageStruct>();
         if (damage.from) {
-            if (damage.from->getEquips().length() <= player->getEquips().length()) {
+            if (damage.from->getEquips().length() <= qMin(2, player->getEquips().length())) {
                 room->notifySkillInvoked(player, objectName());
                 room->broadcastSkillInvoke(objectName());
 
@@ -482,7 +482,7 @@ public:
         if (damage.card && damage.card->isKindOf("Slash") && target->hasEquip()
             && !target->hasFlag("Global_DebutFlag") && !damage.chain && !damage.transfer) {
             QStringList equiplist;
-            for (int i = 0; i <= 3; i++) {
+            for (int i = 0; i < S_EQUIP_AREA_LENGTH; i++) {
                 if (!target->getEquip(i)) continue;
                 if (panfeng->canDiscard(target, target->getEquip(i)->getEffectiveId()) || panfeng->getEquip(i) == NULL)
                     equiplist << QString::number(i);
@@ -723,7 +723,7 @@ HegemonyPackage::HegemonyPackage()
     ganfuren->addSkill(new Shenzhi);
 
     General *heg_luxun = new General(this, "heg_luxun", "wu", 3); // WU 007 G
-    heg_luxun->addSkill("qianxun");
+    heg_luxun->addSkill("nosqianxun");
     heg_luxun->addSkill(new Duoshi);
 
     General *dingfeng = new General(this, "dingfeng", "wu"); // WU 016
@@ -776,8 +776,8 @@ HegemonyPackage::HegemonyPackage()
     heg_huangyueying->addSkill("nosqicai");
 
     General *heg_zhouyu = new General(this, "heg_zhouyu", "wu", 3, true, true); // WU 005 G
-    heg_zhouyu->addSkill("yingzi");
-    heg_zhouyu->addSkill("fanjian");
+    heg_zhouyu->addSkill("nosyingzi");
+    heg_zhouyu->addSkill("nosfanjian");
 
     General *heg_xiaoqiao = new General(this, "heg_xiaoqiao", "wu", 3, false, true); // WU 011 G
     heg_xiaoqiao->addSkill("tianxiang");

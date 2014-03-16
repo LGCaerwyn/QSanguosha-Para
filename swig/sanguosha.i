@@ -502,6 +502,7 @@ struct CardUseStruct {
     QList<ServerPlayer *> to;
     bool m_isOwnerUse;
     bool m_addHistory;
+    bool m_isHandcard;
 };
 
 struct CardsMoveStruct {
@@ -531,6 +532,7 @@ struct CardsMoveOneTimeStruct {
     QString to_pile_name;
 
     QList<bool> open; // helper to prevent sending card_id to unrelevant clients
+    bool transit; // helper to judge whether the move is intermediate
     bool is_last_handcard;
 };
 
@@ -605,6 +607,7 @@ struct CardResponseStruct {
     const Card *m_card;
     ServerPlayer *m_who;
     bool m_isUse;
+    bool m_isHandcard;
 };
 
 enum TriggerEvent {
@@ -687,6 +690,7 @@ enum TriggerEvent {
     PostCardEffected,
     CardFinished,
     TrickCardCanceling,
+    TrickEffect,
 
     ChoiceMade,
 
@@ -1054,7 +1058,7 @@ public:
     bool changeMaxHpForAwakenSkill(ServerPlayer *player, int magnitude = -1);
     void applyDamage(ServerPlayer *victim, const DamageStruct &damage);
     void recover(ServerPlayer *player, const RecoverStruct &recover, bool set_emotion = false);
-    bool cardEffect(const Card *card, ServerPlayer *from, ServerPlayer *to);
+    bool cardEffect(const Card *card, ServerPlayer *from, ServerPlayer *to, bool multiple = false);
     bool cardEffect(const CardEffectStruct &effect);
     bool isJinkEffected(ServerPlayer *user, const Card *jink);
     void judge(JudgeStruct &judge_struct);
@@ -1070,7 +1074,8 @@ public:
     void clearAG(ServerPlayer *player = NULL);
     void provide(const Card *card);
     QList<ServerPlayer *> getLieges(const char *kingdom, ServerPlayer *lord) const;
-    void sendLog(const LogMessage &log);
+    void sendLog(const LogMessage &log, QList<ServerPlayer *> players = QList<ServerPlayer *>());
+    void sendLog(const LogMessage &log, ServerPlayer *player);
     void showCard(ServerPlayer *player, int card_id, ServerPlayer *only_viewer = NULL);
     void showAllCards(ServerPlayer *player, ServerPlayer *to = NULL);
     void retrial(const Card *card, ServerPlayer *player, JudgeStar judge, const char *skill_name, bool exchange = false);

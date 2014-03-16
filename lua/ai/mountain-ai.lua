@@ -8,7 +8,8 @@ local function card_for_qiaobian(self, who, return_prompt)
 				if not judge:isKindOf("YanxiaoCard") then
 					for _, enemy in ipairs(self.enemies) do
 						if not enemy:containsTrick(judge:objectName()) and not enemy:containsTrick("YanxiaoCard")
-							and not self.room:isProhibited(self.player, enemy, judge) then
+							and not self.room:isProhibited(self.player, enemy, judge)
+							and not (enemy:hasSkills("hongyan|wuyan") and judge:isKindOf("Lightning")) then
 							target = enemy
 							break
 						end
@@ -81,11 +82,11 @@ local function card_for_qiaobian(self, who, return_prompt)
 		end
 
 		if card == nil or target == nil then
-			if not who:hasEquip() or who:hasSkills(sgs.lose_equip_skill) then return nil end
+			if not who:hasEquip() or (who:hasSkills(sgs.lose_equip_skill) and not who:getTreasure()) then return nil end
 			local card_id = self:askForCardChosen(who, "e", "dummy")
 			if who:hasEquip(sgs.Sanguosha:getCard(card_id)) then card = sgs.Sanguosha:getCard(card_id) end
 			if card then
-				if card:isKindOf("Armor") or card:isKindOf("DefensiveHorse") then
+				if card:isKindOf("Armor") or card:isKindOf("DefensiveHorse") or card:isKindOf("WoodenOx") then
 					self:sort(self.friends, "defense")
 				else
 					self:sort(self.friends, "handcard")
@@ -97,10 +98,12 @@ local function card_for_qiaobian(self, who, return_prompt)
 						break
 					end
 				end
-				for _, friend in ipairs(self.friends) do
-					if not self:getSameEquip(card, friend) and friend:objectName() ~= who:objectName() then
-						target = friend
-						break
+				if not target then
+					for _, friend in ipairs(self.friends) do
+						if not self:getSameEquip(card, friend) and friend:objectName() ~= who:objectName() then
+							target = friend
+							break
+						end
 					end
 				end
 			end
@@ -309,7 +312,7 @@ end
 sgs.ai_skill_invoke.tuntian = function(self, data)
 	if self.player:hasSkill("zaoxian") and self.player:getPile("field"):length() < 3 and self.player:getMark("zaoxian") == 0 then
 		for _, enemy in ipairs(self.enemies) do
-			if not enemy:hasSkills("qianxun|noswuyan") then return true end
+			if not enemy:hasSkills("nosqianxun|noswuyan") then return true end
 		end
 		return false
 	end
@@ -321,7 +324,7 @@ sgs.ai_slash_prohibit.tuntian = function(self, from, to, card)
 	local enemies = self:getEnemies(to)
 	local good_enemy = false
 	for _, enemy in ipairs(enemies) do
-		if not enemy:hasSkills("qianxun|noswuyan|weimu") then
+		if not enemy:hasSkills("nosqianxun|noswuyan|weimu") then
 			good_enemy = true
 			break
 		end
@@ -1001,7 +1004,7 @@ function sgs.ai_skill_choice.huashen(self, choices, data, xiaode_choice)
 		if self.player:getWeapon() and str:matchOne("qiangxi") then return "qiangxi" end
 
 		for _, askill in ipairs(("manjuan|xiansi|tuxi|nostuxi|dimeng|haoshi|guanxing|zhiheng|qiaobian|qice|tanhu|noslijian|lijian|shelie|xunxun|luoshen|" ..
-								"yongsi|dujin|shude|zhiyan|biyue|yingzi|qingnang"):split("|")) do
+								"yongsi|dujin|shude|zhiyan|biyue|yingzi|nosyingzi|qingnang"):split("|")) do
 			if str:matchOne(askill) then return askill end
 		end
 
@@ -1011,7 +1014,7 @@ function sgs.ai_skill_choice.huashen(self, choices, data, xiaode_choice)
 			end
 		end
 
-		for _, askill in ipairs(("hongyuan|drzhiheng|fangquan|mizhao|quhu|fanjian|junxing|hengzheng|duanliang|guose|" ..
+		for _, askill in ipairs(("hongyuan|drzhiheng|fangquan|mizhao|quhu|fanjian|nosfanjian|junxing|hengzheng|duanliang|guose|" ..
 								"baobian|ganlu|tiaoxin|zhaolie|chuanxin|fengshi|moukui|liegong|mengjin|tieji|kofliegong|wushuang|drwushuang|niaoxiang|" ..
 								"juejing|nosfuhun|nosqianxi|yanxiao|guhuo|nosguhuo|xuanhuo|nosxuanhuo|qiangxi|huangen|" ..
 								"nosjujian|lieren|pojun|yishi|danshou|qixi|yinling|gongxin|shangyi|duoshi|nosjizhi|jizhi|zhaoxin|gongqi|drjiedao|" ..
@@ -1019,7 +1022,7 @@ function sgs.ai_skill_choice.huashen(self, choices, data, xiaode_choice)
 								"longhun|jiuchi|qingcheng|shuangren|kuangfu|nosgongqi|wushen|lianhuan|duanxie|" ..
 								"qianxi|jujian|shensu|luanji|zhijian|shuangxiong|fuluan|yanyu|drluoyi|qingyi|huoshui|zhoufu|bifa|" ..
 								"xinzhan|jieyuan|duanbing|fenxun|guidao|guicai|noszhenlie|kurou|wansha|lianpo|qiluan|xiaode|qingjian|" ..
-								"yicong|zhenwei|heyi|nosshangshi|shangshi|lianying|tianyi|xianzhen|qiaoshui|juece|sijian|zongshi|keji|paoxiao|" ..
+								"yicong|zhenwei|heyi|nosshangshi|shangshi|lianying|noslianying|tianyi|xianzhen|qiaoshui|juece|sijian|zongshi|keji|paoxiao|" ..
 								"kuiwei|yuanhu|huyuan|nosjushou|fenming|huoji|roulin|lihuo|kofxiaoji|xiaoji|xuanfeng|nosxuanfeng|" ..
 								"jiushi|shushen|longyin|shoucheng|qicai|dangxian|tannang|mashu|nosqicai|hongyan|" ..
 								"zongxuan|mieji|suishi|qinyin|tianfu|jinjiu|yicheng|jushou|nosguixin|shenfen"):split("|")) do
@@ -1073,7 +1076,7 @@ function sgs.ai_skill_choice.huashen(self, choices, data, xiaode_choice)
 			end
 		end
 
-		for _, askill in ipairs(("noswuyan|wuyan|weimu|mingshi|qianhuan|guzheng|luoying|aocai|kanpo|liuli|beige|qingguo|mingzhe|" ..
+		for _, askill in ipairs(("noswuyan|wuyan|weimu|mingshi|qianhuan|guzheng|luoying|aocai|kanpo|liuli|beige|qingguo|mingzhe|yajiao|" ..
 								"yicheng|xiangle|renwang|feiying|longdan"):split("|")) do
 			if str:matchOne(askill) then return askill end
 		end
@@ -1083,9 +1086,9 @@ function sgs.ai_skill_choice.huashen(self, choices, data, xiaode_choice)
 			if str:matchOne(askill) then return askill end
 		end
 
-		for _, askill in ipairs(("huangen|jianxiong|jiang|qianxun|danlao|juxiang|huoshou|zhichi|" ..
+		for _, askill in ipairs(("huangen|jianxiong|nosjianxiong|jiang|nosqianxun|qianxun|danlao|juxiang|huoshou|zhichi|" ..
 								"lirang|qingjian|yicong|wusheng|wushuang|tianxiang|leiji|nosleiji|guhuo|nosguhuo|nosshangshi|shangshi|" ..
-								"zhiyu|guidao|guicai|jijiu|buyi|renxin|lianying|shoucheng|shenxian|sijian|tianming|drjijiu|jieyuan|" ..
+								"zhiyu|guidao|guicai|jijiu|buyi|renxin|lianying|noslianying|shoucheng|shenxian|sijian|tianming|drjijiu|jieyuan|" ..
 								"yanyu|zhendu|xiaoguo|tianfu|shushen|niaoxiang|zhenlie|tiandu|yingyang|noszhenlie"):split("|")) do
 			if str:matchOne(askill) then return askill end
 		end

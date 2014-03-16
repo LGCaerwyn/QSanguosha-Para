@@ -45,6 +45,9 @@ struct CardEffectStruct {
 
     ServerPlayer *from;
     ServerPlayer *to;
+
+    bool multiple; // helper to judge whether the card has multiple targets
+                   // does not make sense if the card inherits SkillCard
 };
 
 struct SlashEffectStruct {
@@ -83,6 +86,7 @@ struct CardUseStruct {
     QList<ServerPlayer *> to;
     bool m_isOwnerUse;
     bool m_addHistory;
+    bool m_isHandcard;
 };
 
 class CardMoveReason {
@@ -188,6 +192,7 @@ struct CardsMoveOneTimeStruct {
     QString to_pile_name;
 
     QList<bool> open; // helper to prevent sending card_id to unrelevant clients
+    bool transit; // helper to judge whether the move is intermediate
     bool is_last_handcard;
 };
 
@@ -385,6 +390,7 @@ struct CardResponseStruct {
     const Card *m_card;
     ServerPlayer *m_who;
     bool m_isUse;
+    bool m_isHandcard;
 };
 
 enum TriggerEvent {
@@ -467,6 +473,7 @@ enum TriggerEvent {
     PostCardEffected,
     CardFinished,
     TrickCardCanceling,
+    TrickEffect,
 
     ChoiceMade,
 

@@ -33,13 +33,13 @@ void RoomThread1v1::run() {
             foreach (const General *general, windpack->findChildren<const General *>())
                 candidates << general->objectName();
         } else {
-            candidates << "caocao" << "simayi" << "nos_xiahoudun" << "kof_zhangliao"
+            candidates << "nos_caocao" << "simayi" << "nos_xiahoudun" << "kof_zhangliao"
                        << "kof_xuchu" << "guojia" << "kof_zhenji" << "kof_xiahouyuan"
-                       << "nos_caoren" << "dianwei" << "kof_guanyu" << "zhangfei"
-                       << "zhugeliang" << "zhaoyun" << "machao" << "kof_huangyueying"
+                       << "nos_caoren" << "dianwei" << "kof_guanyu" << "nos_zhangfei"
+                       << "zhugeliang" << "nos_zhaoyun" << "machao" << "kof_huangyueying"
                        << "kof_huangzhong" << "kof_jiangwei" << "kof_menghuo" << "kof_zhurong"
-                       << "sunquan" << "ganning" << "huanggai" << "zhouyu"
-                       << "luxun" << "kof_sunshangxiang" << "sunjian" << "xiaoqiao"
+                       << "sunquan" << "ganning" << "huanggai" << "nos_zhouyu"
+                       << "nos_luxun" << "kof_sunshangxiang" << "sunjian" << "xiaoqiao"
                        << "lvbu" << "kof_diaochan" << "yanliangwenchou" << "hejin";
             if (rule == "2013") {
                 candidates << "kof_liubei" << "kof_weiyan" << "kof_lvmeng" << "kof_daqiao"
@@ -163,7 +163,7 @@ void RoomThread1v1::takeGeneral(ServerPlayer *player, const QString &name) {
         log.type = "#VsTakeGeneral";
         log.arg = group;
         log.arg2 = (p == player) ? general_name : namearg;
-        room->doNotify(p, S_COMMAND_LOG_SKILL, log.toJsonValue());
+        room->sendLog(log, p);
     }
 
     general_names.removeOne(name);

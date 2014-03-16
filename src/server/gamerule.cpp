@@ -422,9 +422,13 @@ bool GameRule::trigger(TriggerEvent triggerEvent, Room *room, ServerPlayer *play
     case CardEffected: {
             if (data.canConvert<CardEffectStruct>()) {
                 CardEffectStruct effect = data.value<CardEffectStruct>();
-                if (effect.card->getTypeId() == Card::TypeTrick && room->isCanceled(effect)) {
-                    effect.to->setFlags("Global_NonSkillNullify");
-                    return true;
+                if (effect.card->getTypeId() == Card::TypeTrick) {
+                    if (room->isCanceled(effect)) {
+                        effect.to->setFlags("Global_NonSkillNullify");
+                        return true;
+                    } else {
+                        room->getThread()->trigger(TrickEffect, room, effect.to, data);
+                    }
                 }
                 if (effect.to->isAlive() || effect.card->isKindOf("Slash"))
                     effect.card->onEffect(effect);
@@ -1073,7 +1077,7 @@ bool BasaraMode::trigger(TriggerEvent triggerEvent, Room *room, ServerPlayer *pl
                     log.arg2 = room->getTag(sp->objectName()).toStringList().at(1);
                 }
 
-                room->doNotify(sp, QSanProtocol::S_COMMAND_LOG_SKILL, log.toJsonValue());
+                room->sendLog(log, sp);
                 sp->tag["roles"] = room->getTag(sp->objectName()).toStringList().join("+");
             }
         }

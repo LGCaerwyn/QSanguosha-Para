@@ -197,7 +197,7 @@ sgs.ai_skill_askforag.gongxin = function(self, card_ids)
 	elseif self:getCardsNum("IronChain") > 0 then
 		local iron_chain = self:getCard("IronChain")
 		if iron_chain then
-			local dummy_use = { to = sgs.SPlayerList(), isDummy = true }
+			local dummy_use = { to = sgs.SPlayerList(), isDummy = true, canRecast = true }
 			self:useTrickCard(iron_chain, dummy_use)
 			if dummy_use.card and dummy_use.to:isEmpty() then willRecast = true end
 		end
@@ -834,7 +834,7 @@ local function getShenfenUseValueOfHECards(self, to)
 	-- value of handcards
 	local value_h = 0
 	local hcard = to:getHandcardNum()
-	if to:hasSkill("lianying") then
+	if to:hasSkills("lianying|noslianying") then
 		hcard = hcard - 0.9
 	elseif to:hasSkills("shangshi|nosshangshi") then
 		hcard = hcard - 0.9 * to:getLostHp()
@@ -957,6 +957,9 @@ table.insert(sgs.ai_skills, longhun_skill)
 longhun_skill.getTurnUseCard = function(self)
 	if self.player:getHp() > 1 then return end
 	local cards = sgs.QList2Table(self.player:getCards("he"))
+	for _, id in sgs.qlist(player:getPile("wooden_ox")) do
+		table.insert(cards, sgs.Sanguosha:getCard(id))
+	end
 	self:sortByUseValue(cards, true)
 	for _, card in ipairs(cards) do
 		if card:getSuit() == sgs.Card_Diamond and self:slashIsAvailable() then

@@ -231,9 +231,7 @@ void Slash::onUse(Room *room, const CardUseStruct &card_use) const{
         log.from = use.from;
         log.arg = "moon_spear";
         room->sendLog(log);
-    } else if (use.card->isVirtualCard() && use.card->getSkillName() == "spear")
-        room->setEmotion(player, "weapon/spear");
-    else if (use.to.size() > 1 && player->hasWeapon("halberd") && player->isLastHandCard(this))
+    } else if (use.to.size() > 1 && player->hasWeapon("halberd") && player->isLastHandCard(this))
         room->setEmotion(player, "weapon/halberd");
     else if (use.card->isVirtualCard() && use.card->getSkillName() == "fan")
         room->setEmotion(player, "weapon/fan");
@@ -536,6 +534,29 @@ public:
     }
 };
 
+class SpearEmotion: public TriggerSkill {
+public:
+    SpearEmotion(): TriggerSkill("#spear-emotion") {
+        events << PreCardUsed << CardResponded;
+        global = true;
+    }
+
+    virtual bool triggerable(const ServerPlayer *target) const{
+        return target != NULL;
+    }
+
+    virtual bool trigger(TriggerEvent triggerEvent, Room *room, ServerPlayer *player, QVariant &data) const{
+        CardStar card = NULL;
+        if (triggerEvent == PreCardUsed)
+            card = data.value<CardUseStruct>().card;
+        else
+            card = data.value<CardResponseStruct>().m_card;
+        if (card->isKindOf("Slash") && card->getSkillName() == "spear")
+            room->setEmotion(player, "weapon/spear");
+        return false;
+    }
+};
+
 Spear::Spear(Suit suit, int number)
     : Weapon(suit, number, 3)
 {
@@ -789,10 +810,8 @@ void SavageAssault::onEffect(const CardEffectStruct &effect) const{
                                          QVariant::fromValue(effect),
                                          Card::MethodResponse,
                                          effect.from->isAlive() ? effect.from : NULL);
-    if (slash) {
-        if (slash->getSkillName() == "spear") room->setEmotion(effect.to, "weapon/spear");
+    if (slash)
         room->setEmotion(effect.to, "killer");
-    }
 
     // ================================
     bool drwushuang_effect = true;
@@ -1134,7 +1153,7 @@ void Dismantlement::onEffect(const CardEffectStruct &effect) const{
             log.from = effect.from;
             log.to << effect.to;
             log.card_str = IntList2StringList(effect.to->handCards()).join("+");
-            room->doNotify(effect.from, QSanProtocol::S_COMMAND_LOG_SKILL, log.toJsonValue());
+            room->sendLog(log, effect.from);
 
             card_id = room->askForCardChosen(effect.from, effect.to, "h", objectName(), true, Card::MethodDiscard);
         }
@@ -1337,12 +1356,28 @@ public:
         return target != NULL && target->isAlive();
     }
 
-    virtual bool trigger(TriggerEvent, Room *, ServerPlayer *player, QVariant &data) const{
+    virtual bool trigger(TriggerEvent, Room *room, ServerPlayer *player, QVariant &data) const{
         CardsMoveOneTimeStruct move = data.value<CardsMoveOneTimeStruct>();
-        if (move.from != player || !move.from_places.contains(Player::PlaceEquip) || player->getPile("wooden_ox").isEmpty())
+        if (!move.from || move.from != player)
+            return false;
+        if (player->hasTreasure("wooden_ox")) {
+            int count = 0;
+            for (int i = 0; i < move.card_ids.size(); i++) {
+                if (move.from_pile_names[i] == "wooden_ox") count++;
+            }
+            if (count > 0) {
+                LogMessage log;
+                log.type = "$WoodenOx";
+                log.from = player;
+                log.arg = QString::number(count);
+                log.arg2 = "wooden_ox";
+                room->sendLog(log);
+            }
+        }
+        if (player->getPile("wooden_ox").isEmpty())
             return false;
         for (int i = 0; i < move.card_ids.size(); i++) {
-            if (move.from_places[i] != Player::PlaceEquip) continue;
+            if (move.from_places[i] != Player::PlaceEquip && move.from_places[i] != Player::PlaceTable) continue;
             const Card *card = Sanguosha->getEngineCard(move.card_ids[i]);
             if (card->objectName() == "wooden_ox") {
                 ServerPlayer *to = (ServerPlayer *)move.to;
@@ -1351,7 +1386,7 @@ public:
                     QList<ServerPlayer *> p_list;
                     p_list << to;
                     to->addToPile("wooden_ox", player->getPile("wooden_ox"), false, p_list);
-                } else {
+                } else if (!move.transit) {
                     player->clearOnePrivatePile("wooden_ox");
                 }
                 return false;
@@ -1454,6 +1489,9 @@ StandardCardPackage::StandardCardPackage()
            << new BladeSkill << new SpearSkill << new AxeSkill
            << new KylinBowSkill << new EightDiagramSkill
            << new HalberdSkill << new WoodenOxSkill << new WoodenOxTriggerSkill;
+
+    skills << new SpearEmotion;
+    related_skills.insertMulti("spear", "#spear-emotion");
 
     QList<Card *> horses;
     horses << new DefensiveHorse(Card::Spade, 5)

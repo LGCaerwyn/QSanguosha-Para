@@ -13,6 +13,11 @@ return {
 	["nostal_yjcm"] = "怀旧-一将",
 	["nostal_yjcm2012"] = "怀旧-一将2",
 
+	["nos_caocao"] = "曹操-旧",
+	["&nos_caocao"] = "曹操",
+	["nosjianxiong"] = "奸雄",
+	[":nosjianxiong"] = "每当你受到伤害后，你可以获得对你造成伤害的牌。",
+
 	["nos_xiahoudun"] = "夏侯惇-旧",
 	["&nos_xiahoudun"] = "夏侯惇",
 	["nosganglie"] = "刚烈",
@@ -35,9 +40,31 @@ return {
 	["nosrende"] = "仁德",
 	[":nosrende"] = "出牌阶段，你可以将任意数量的手牌任意分配给其他角色。每当你于本阶段内以此法给出的手牌首次达到两张或更多后，你回复1点体力。",
 
+	["nos_zhangfei"] = "张飞-旧",
+	["&nos_zhangfei"] = "张飞",
+
+	["#nos_zhaoyun"] = "少年将军",
+	["nos_zhaoyun"] = "赵云-旧",
+	["&nos_zhaoyun"] = "赵云",
+
 	["#nos_lvmeng"] = "白衣渡江",
 	["nos_lvmeng"] = "吕蒙-旧",
 	["&nos_lvmeng"] = "吕蒙",
+
+	["nos_luxun"] = "陆逊-旧",
+	["&nos_luxun"] = "陆逊",
+	["nosqianxun"] = "谦逊",
+	[":nosqianxun"] = "<font color=\"blue\"><b>锁定技。</b></font>你不能被选择为【顺手牵羊】与【乐不思蜀】的目标。",
+	["noslianying"] = "连营",
+	[":noslianying"] = "每当你失去最后的手牌后，你可以摸一张牌。",
+
+	["nos_zhouyu"] = "周瑜-旧",
+	["&nos_zhouyu"] = "周瑜",
+	["nosyingzi"] = "英姿",
+	[":nosyingzi"] = "摸牌阶段，你可以额外摸一张牌。",
+	["nosfanjian"] = "反间",
+	[":nosfanjian"] = "<font color=\"green\"><b>阶段技。</b></font>你可以令一名其他角色选择一种花色，然后正面朝上获得你的一张手牌。若该牌花色与该角色所选花色不同，你对其造成1点伤害。",
+
 
 	["nos_diaochan"] = "貂蝉-旧",
 	["&nos_diaochan"] = "貂蝉",

@@ -181,7 +181,7 @@ end
 
 sgs.ai_need_damaged.enyuan = function(self, attacker, player)
 	if attacker and self:isEnemy(attacker, player) and self:isWeak(attacker)
-		and attacker:getHandcardNum() < 3 and not attacker:hasSkills("lianying|kongcheng")
+		and attacker:getHandcardNum() < 3 and not attacker:hasSkills("lianying|noslianying|kongcheng")
 		and not self:needToLoseHp(attacker) then
 		return true
 	end
@@ -331,6 +331,7 @@ sgs.ai_playerchosen_intention.xuanfeng = function(self, from, to)
 end
 
 sgs.xuanfeng_keep_value = sgs.xiaoji_keep_value
+sgs.ai_cardneed.xuanfeng = sgs.ai_cardneed.equip
 
 sgs.ai_skill_invoke.pojun = function(self, data)
 	local damage = data:toDamage()
@@ -377,7 +378,10 @@ sgs.ai_skill_use_func.GanluCard = function(card, use, self)
 	local target, min_friend, max_enemy
 
 	local compare_func = function(a, b)
-		return a:getEquips():length() > b:getEquips():length()
+		local al, bl = a:getEquips():length(), b:getEquips():length()
+		if a:getTreasure() then al = al + 1 end
+		if b:getTreasure() then bl = bl + 1 end
+		return al > bl
 	end
 	table.sort(self.enemies, compare_func)
 	table.sort(self.friends, compare_func)
@@ -753,7 +757,7 @@ sgs.ai_use_value.XianzhenCard = 9.2
 sgs.ai_use_priority.XianzhenCard = 9.2
 
 sgs.ai_skill_invoke.shangshi = function(self, data)
-	if self.player:getLostHp() == 1 then return sgs.ai_skill_invoke.lianying(self, data) end
+	if self.player:getLostHp() == 1 then return sgs.ai_skill_invoke.noslianying(self, data) end
 	return true
 end
 

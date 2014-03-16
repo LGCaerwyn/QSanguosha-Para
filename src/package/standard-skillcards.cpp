@@ -92,29 +92,38 @@ void TuxiCard::onEffect(const CardEffectStruct &effect) const{
 }
 
 FanjianCard::FanjianCard() {
+    will_throw = false;
+    handling_method = Card::MethodNone;
 }
 
 void FanjianCard::onEffect(const CardEffectStruct &effect) const{
     ServerPlayer *zhouyu = effect.from;
     ServerPlayer *target = effect.to;
     Room *room = zhouyu->getRoom();
+    Card::Suit suit = getSuit();
 
-    int card_id = zhouyu->getRandomHandCardId();
-    const Card *card = Sanguosha->getCard(card_id);
-    Card::Suit suit = room->askForSuit(target, "fanjian");
+    CardMoveReason reason(CardMoveReason::S_REASON_GIVE, zhouyu->objectName(), target->objectName(), "fanjian", QString());
+    room->obtainCard(target, this, reason);
 
-    LogMessage log;
-    log.type = "#ChooseSuit";
-    log.from = target;
-    log.arg = Card::Suit2String(suit);
-    room->sendLog(log);
-
-    room->getThread()->delay();
-    target->obtainCard(card);
-    room->showCard(target, card_id);
-
-    if (card->getSuit() != suit)
-        room->damage(DamageStruct("fanjian", zhouyu, target));
+    if (target->isAlive()) {
+        if (target->isKongcheng()) {
+            room->loseHp(target);
+        } else {
+            target->setMark("FanjianSuit", int(suit)); // For AI
+            if (room->askForSkillInvoke(target, "fanjian_discard", "prompt:::" + Card::Suit2String(suit))) {
+                room->showAllCards(target);
+                DummyCard *dummy = new DummyCard;
+                foreach (const Card *card, target->getHandcards()) {
+                    if (card->getSuit() == suit)
+                        dummy->addSubcard(card);
+                }
+                room->throwCard(dummy, target);
+                delete dummy;
+            } else {
+                room->loseHp(target);
+            }
+        }
+    }
 }
 
 KurouCard::KurouCard() {
@@ -125,6 +134,17 @@ void KurouCard::use(Room *room, ServerPlayer *source, QList<ServerPlayer *> &) c
     room->loseHp(source);
     if (source->isAlive())
         room->drawCards(source, 2);
+}
+
+LianyingCard::LianyingCard() {
+}
+
+bool LianyingCard::targetFilter(const QList<const Player *> &targets, const Player *, const Player *Self) const{
+    return targets.length() < Self->getMark("lianying");
+}
+
+void LianyingCard::onEffect(const CardEffectStruct &effect) const{
+    effect.to->drawCards(1, "lianying");
 }
 
 LijianCard::LijianCard(bool cancelable): duel_cancelable(cancelable) {
@@ -199,13 +219,7 @@ bool QingnangCard::targetsFeasible(const QList<const Player *> &targets, const P
 
 void QingnangCard::use(Room *room, ServerPlayer *source, QList<ServerPlayer *> &targets) const{
     ServerPlayer *target = targets.value(0, source);
-
-    CardEffectStruct effect;
-    effect.card = this;
-    effect.from = source;
-    effect.to = target;
-
-    room->cardEffect(effect);
+    room->cardEffect(this, source, target);
 }
 
 void QingnangCard::onEffect(const CardEffectStruct &effect) const{

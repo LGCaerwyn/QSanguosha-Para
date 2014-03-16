@@ -492,6 +492,7 @@ sgs.ai_skill_choice.kuangfu_equip = function(self, choices, data)
 			elseif card:isKindOf("OffensiveHorse") and choices:match("3") then return "3"
 			end
 		end
+		if choices:match("4") and who:getPile("wooden_ox"):length() > 1 then return "4" end
 		if choices:match("1") and who:hasArmorEffect("eight_diagram") and not self:needToThrowArmor(who) then return "1" end
 		if who:hasSkills("jijiu|beige|mingce|weimu|qingcheng") and not self:doNotDiscard(who, "e", false, 1, reason) then
 			if choices:match("2") then return "2" end
@@ -578,10 +579,10 @@ sgs.ai_skill_use_func.QingchengCard = function(card, use, self)
 				end
 				if target then break end
 			end
-			for _, askill in ipairs(("noswuyan|wuyan|weimu|kanpo|liuli|yiji|jieming|ganglie|vsganglie|nosganglie|fankui|fangzhu|jianxiong|enyuan|nosenyuan|" ..
-									"qingguo|longdan|xiangle|qingjian|renwang|jiang|yanzheng|tianming|yizhong|bazhen|jijiu|beige|longhun|buyi|gushou|mingzhe|" ..
-									"huangen|danlao|qianxun|juxiang|huoshou|anxian|fenyong|zhichi|jilei|feiying|yicong|wusheng|wushuang|" ..
-									"xuanfeng|nosxuanfeng|luoying|xiaoguo|guhuo|nosguhuo|guidao|guicai|shangshi|lianying|sijian|kofxiaoji|xiaoji|kofqingguo|mingshi|" ..
+			for _, askill in ipairs(("noswuyan|wuyan|weimu|kanpo|liuli|yiji|jieming|ganglie|vsganglie|nosganglie|fankui|fangzhu|jianxiong|nosjianxiong|enyuan|nosenyuan|" ..
+									"qingguo|longdan|xiangle|qingjian|renwang|jiang|yanzheng|tianming|yizhong|bazhen|jijiu|beige|longhun|buyi|gushou|mingzhe|yajiao|" ..
+									"huangen|danlao|qianxun|nosqianxun|juxiang|huoshou|anxian|fenyong|zhichi|jilei|feiying|yicong|wusheng|wushuang|" ..
+									"xuanfeng|nosxuanfeng|luoying|xiaoguo|guhuo|nosguhuo|guidao|guicai|shangshi|lianying|noslianying|sijian|kofxiaoji|xiaoji|kofqingguo|mingshi|" ..
 									"zhiyu|hongyan|tiandu|lirang|guzheng|xingshang|shushen|langgu|guixin|nosshangshi|tianxiang|leiji|nosleiji"):split("|")) do
 				if enemy:hasSkill(askill, true) and enemy:getMark("Qingcheng" .. askill) == 0 then
 					self.qingcheng_skill = askill:objectName()

@@ -684,6 +684,9 @@ table.insert(sgs.ai_skills, lihuo_skill)
 lihuo_skill.getTurnUseCard = function(self)
 	if self:isWeak() then return nil end
 	local cards = self.player:getCards("h")
+	for _, id in sgs.qlist(self.player:getPile("wooden_ox")) do
+		cards:append(sgs.Sanguosha:getCard(id))
+	end
 	cards = sgs.QList2Table(cards)
 	local slash_card
 
@@ -814,7 +817,7 @@ qice_skill.getTurnUseCard = function(self)
 	local aoe
 	local i
 	local good, bad = 0, 0
-	local caocao = self.room:findPlayerBySkillName("jianxiong")
+	local caocao = self.room:findPlayerBySkillName("jianxiong") or self.room:findPlayerBySkillName("nosjianxiong")
 	local qicetrick = "savage_assault|archery_attack|ex_nihilo|god_salvation"
 	local qicetricks = qicetrick:split("|")
 	local aoe_available, ge_available, ex_available = true, true, true
