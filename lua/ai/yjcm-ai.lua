@@ -350,7 +350,7 @@ end
 
 sgs.ai_choicemade_filter.skillInvoke.pojun = function(self, player, promptlist)
 	local intention = 60
-	local index = promptlist[#promptlist] == "yes" and 1 or -1
+	local index = (promptlist[#promptlist] == "yes") and 1 or -1
 	local damage = self.room:getTag("CurrentDamageStruct"):toDamage()
 	if damage.from and damage.to then
 		if not damage.to:faceUp() then
@@ -442,7 +442,6 @@ sgs.ai_skill_use_func.GanluCard = function(card, use, self)
 end
 
 sgs.ai_use_priority.GanluCard = 9
-sgs.dynamic_value.control_card.GanluCard = true
 
 sgs.ai_card_intention.GanluCard = function(self, card, from, to)
 	local compare_func = function(a, b)
@@ -750,9 +749,6 @@ function sgs.ai_skill_pindian.xianzhen(minusecard, self, requestor)
 end
 
 sgs.ai_card_intention.XianzhenCard = 70
-
-sgs.dynamic_value.control_card.XianzhenCard = true
-
 sgs.ai_use_value.XianzhenCard = 9.2
 sgs.ai_use_priority.XianzhenCard = 9.2
 

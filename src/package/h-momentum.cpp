@@ -12,74 +12,6 @@
 #include "settings.h"
 #include "jsonutils.h"
 
-class Xunxun: public PhaseChangeSkill {
-public:
-    Xunxun(): PhaseChangeSkill("xunxun") {
-        frequency = Frequent;
-    }
-
-    virtual bool onPhaseChange(ServerPlayer *lidian) const{
-        if (lidian->getPhase() == Player::Draw) {
-            Room *room = lidian->getRoom();
-            if (room->askForSkillInvoke(lidian, objectName())) {
-                room->broadcastSkillInvoke(objectName());
-                QList<ServerPlayer *> p_list;
-                p_list << lidian;
-                QList<int> card_ids = room->getNCards(4);
-                QList<int> obtained;
-                room->fillAG(card_ids, lidian);
-                int id1 = room->askForAG(lidian, card_ids, false, objectName());
-                card_ids.removeOne(id1);
-                obtained << id1;
-                room->takeAG(lidian, id1, false, p_list);
-                int id2 = room->askForAG(lidian, card_ids, false, objectName());
-                card_ids.removeOne(id2);
-                obtained << id2;
-                room->clearAG(lidian);
-
-                room->askForGuanxing(lidian, card_ids, Room::GuanxingDownOnly);
-                DummyCard *dummy = new DummyCard(obtained);
-                lidian->obtainCard(dummy, false);
-                delete dummy;
-
-                return true;
-            }
-        }
-
-        return false;
-    }
-};
-
-class Wangxi: public TriggerSkill {
-public:
-    Wangxi(): TriggerSkill("wangxi") {
-        events << Damage << Damaged;
-    }
-
-    virtual bool trigger(TriggerEvent triggerEvent, Room *room, ServerPlayer *player, QVariant &data) const{
-        DamageStruct damage = data.value<DamageStruct>();
-        ServerPlayer *target = NULL;
-        if (triggerEvent == Damage && !damage.to->hasFlag("Global_DebutFlag"))
-            target = damage.to;
-        else if (triggerEvent == Damaged)
-            target = damage.from;
-        if (!target || target == player) return false;
-        QList<ServerPlayer *> players;
-        players << player << target;
-        room->sortByActionOrder(players);
-
-        for (int i = 1; i <= damage.damage; i++) {
-            if (!target->isAlive() || !player->isAlive())
-                return false;
-            if (room->askForSkillInvoke(player, objectName(), QVariant::fromValue((PlayerStar)target))) {
-                room->broadcastSkillInvoke(objectName());
-                room->drawCards(players, 1, objectName());
-            }
-        }
-        return false;
-    }
-};
-
 class Hengjiang: public MasochismSkill {
 public:
     Hengjiang(): MasochismSkill("hengjiang") {
@@ -136,7 +68,7 @@ public:
                 }
                 player->setFlags("-HengjiangDiscarded");
                 room->setPlayerMark(player, "@hengjiang", 0);
-                if (invoke) zangba->drawCards(1);
+                if (invoke) zangba->drawCards(1, objectName());
             }
         }
         return false;
@@ -209,9 +141,7 @@ public:
         if (player->isWounded() && room->askForSkillInvoke(player, "guixiu_rec", "recover")) {
             room->broadcastSkillInvoke("guixiu", 2);
             room->notifySkillInvoked(player, "guixiu");
-            RecoverStruct recover;
-            recover.who = player;
-            room->recover(player, recover);
+            room->recover(player, RecoverStruct(player));
         }
     }
 };
@@ -230,7 +160,7 @@ void CunsiCard::onEffect(const CardEffectStruct &effect) const{
 
     room->acquireSkill(effect.to, "yongjue");
     if (effect.to != effect.from)
-        effect.to->drawCards(2);
+        effect.to->drawCards(2, "cunsi");
 }
 
 class Cunsi: public ZeroCardViewAsSkill {
@@ -527,11 +457,7 @@ public:
         room->addPlayerMark(player, "baoling");
 
         if (room->changeMaxHpForAwakenSkill(player, 3)) {
-            RecoverStruct recover;
-            recover.who = player;
-            recover.recover = 3;
-            room->recover(player, recover);
-
+            room->recover(player, RecoverStruct(player, NULL, 3));
             room->acquireSkill(player, "benghuai");
         }
 
@@ -614,10 +540,6 @@ public:
 HMomentumPackage::HMomentumPackage()
     : Package("h_momentum")
 {
-    General *lidian = new General(this, "lidian", "wei", 3); // WEI 017
-    lidian->addSkill(new Xunxun);
-    lidian->addSkill(new Wangxi);
-
     General *zangba = new General(this, "zangba", "wei", 4); // WEI 023
     zangba->addSkill(new Hengjiang);
     zangba->addSkill(new HengjiangDraw);

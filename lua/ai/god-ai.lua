@@ -141,11 +141,11 @@ end
 
 sgs.ai_skill_use_func.GongxinCard = function(card, use, self)
 	self:sort(self.enemies, "handcard")
-	sgs.reverse(self.enemies)
+	self.enemies = sgs.reverse(self.enemies)
 
 	for _, enemy in ipairs(self.enemies) do
 		if not enemy:isKongcheng() and self:objectiveLevel(enemy) > 0 
-			and (self:hasSuit("heart", false, enemy) or self:getKnownNum(eneny) ~= enemy:getHandcardNum()) then
+			and (self:hasSuit("heart", false, enemy) or getKnownNum(eneny) ~= enemy:getHandcardNum()) then
 			use.card = card
 			if use.to then
 				use.to:append(enemy)
@@ -323,7 +323,7 @@ sgs.ai_use_value.GongxinCard = 8.5
 sgs.ai_use_priority.GongxinCard = 9.5
 sgs.ai_card_intention.GongxinCard = 80
 
-sgs.ai_skill_invoke.qinyin = function(self, data)
+sgs.ai_skill_choice.qinyin = function(self, choices)
 	self:sort(self.friends, "hp")
 	self:sort(self.enemies, "hp")
 	local up = 0
@@ -369,13 +369,11 @@ sgs.ai_skill_invoke.qinyin = function(self, data)
 	end
 
 	if down > 0 then
-		sgs.ai_skill_choice.qinyin = "down"
-		return true
+		return "down"
 	elseif up > 0 then
-		sgs.ai_skill_choice.qinyin = "up"
-		return true
+		return choices:match("up") and "up" or "cancel"
 	end
-	return false
+	return "cancel"
 end
 
 local yeyan_skill = {}
@@ -745,6 +743,7 @@ sgs.ai_need_damaged.guixin = function(self, attacker, player)
 end
 
 sgs.ai_skill_choice.wumou = function(self, choices)
+	if self.player:hasSkill("zhaxiang") and not self:isWeak() and not (self.player:hasSkill("chanyuan") and self.player:getHp() == 2) then return "losehp" end
 	if self.player:getMark("@wrath") > 6 then return "discard" end
 	if self.player:getHp() + self:getCardsNum("Peach") > 3 then
 		return "losehp"
@@ -906,6 +905,7 @@ sgs.ai_skill_use_func.ShenfenCard = function(card, use, self)
 				end
 			end
 			if player:hasSkill("fankui") then value_d = value_d * 0.8 end
+			if player:hasSkill("nosfankui") then value_d = value_d * 0.8 end
 			if player:hasSkill("guixin") then
 				if not player:faceUp() then
 					value_d = value_d * 0.4
@@ -949,7 +949,6 @@ sgs.ai_use_value.ShenfenCard = 8
 sgs.ai_use_priority.ShenfenCard = 5.3
 
 sgs.dynamic_value.damage_card.ShenfenCard = true
-sgs.dynamic_value.control_card.ShenfenCard = true
 
 local longhun_skill = {}
 longhun_skill.name = "longhun"
@@ -1001,7 +1000,9 @@ sgs.ai_skill_invoke.lianpo = true
 
 function SmartAI:needBear(player)
 	player = player or self.player
-	return player:hasSkills("renjie+baiyin") and not player:hasSkill("jilve") and player:getMark("@bear") < 4
+	if player:hasSkills("renjie+baiyin") and player:getMark("baiyin") == 0 and not player:hasSkill("jilve") and player:getMark("@bear") < 4 then return true end
+	local sup = (sgs.Sanguosha:getPlayerCount(self.room:getMode()) >= 7) and 2 or 3
+	if player:hasSkills("keji+qinxue") and player:getMark("qinxue") == 0 and not player:hasSkill("gongxin") and player:getHandcardNum() - player:getHp() < sup then return true end
 end
 
 sgs.ai_skill_invoke.jilve_jizhi = function(self, data)
@@ -1018,7 +1019,7 @@ sgs.ai_skill_invoke.jilve_guicai = function(self, data)
 	local judge = data:toJudge()
 	if not self:needRetrial(judge) then return false end
 	return (use or judge.who == self.player or judge.reason == "lightning")
-			and self:getRetrialCardId(sgs.QList2Table(self.player:getHandcards()), judge) ~= -1
+			and self:getRetrialCardId(sgs.QList2Table(self.player:getCards("he")), judge) ~= -1
 end
 
 sgs.ai_skill_invoke.jilve_fangzhu = function(self, data)

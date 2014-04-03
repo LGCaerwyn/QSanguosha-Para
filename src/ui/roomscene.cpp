@@ -115,7 +115,7 @@ RoomScene::RoomScene(QMainWindow *main_window)
     response_skill = new ResponseSkill;
     showorpindian_skill = new ShowOrPindianSkill;
     discard_skill = new DiscardSkill;
-    yiji_skill = new YijiViewAsSkill;
+    yiji_skill = new NosYijiViewAsSkill;
     choose_skill = new ChoosePlayerSkill;
 
     miscellaneous_menu = new QMenu(main_window);
@@ -2006,8 +2006,6 @@ void RoomScene::addSkillButton(const Skill *skill) {
         connect(btn, SIGNAL(skill_activated()), this, SLOT(onSkillActivated()));
         connect(btn, SIGNAL(skill_deactivated()), dashboard, SLOT(skillButtonDeactivated()));
         connect(btn, SIGNAL(skill_deactivated()), this, SLOT(onSkillDeactivated()));
-        if (btn->getViewAsSkill()->objectName() == "mizhao")
-            connect(btn, SIGNAL(skill_activated()), dashboard, SLOT(selectAll()));
     }
 
     QDialog *dialog = skill->getDialog();
@@ -2700,19 +2698,19 @@ void RoomScene::changeHp(const QString &who, int delta, DamageStruct::Nature nat
     else
         dashboard->update();
 
+    QString hp =  QString::number(ClientInstance->getPlayer(who)->getHp() + delta);
+    QString maxhp = QString::number(ClientInstance->getPlayer(who)->getMaxHp());
     if (delta < 0) {
         if (losthp) {
             Sanguosha->playSystemAudioEffect("hplost");
             QString from_general = ClientInstance->getPlayer(who)->objectName();
-            log_box->appendLog("#GetHp", from_general, QStringList(), QString(),
-                               QString::number(ClientInstance->getPlayer(who)->getHp()), QString::number(ClientInstance->getPlayer(who)->getMaxHp()));
+            log_box->appendLog("#GetHp", from_general, QStringList(), QString(), hp, maxhp);
             return;
         }
 
         QString damage_effect;
         QString from_general = ClientInstance->getPlayer(who)->objectName();
-        log_box->appendLog("#GetHp", from_general, QStringList(), QString(),
-                           QString::number(ClientInstance->getPlayer(who)->getHp()), QString::number(ClientInstance->getPlayer(who)->getMaxHp()));
+        log_box->appendLog("#GetHp", from_general, QStringList(), QString(), hp, maxhp);
         switch (delta) {
         case -1: damage_effect = "injure1"; break;
         case -2: damage_effect = "injure2"; break;
@@ -2737,8 +2735,7 @@ void RoomScene::changeHp(const QString &who, int delta, DamageStruct::Nature nat
         QString n = QString::number(delta);
 
         log_box->appendLog(type, from_general, QStringList(), QString(), n);
-        log_box->appendLog("#GetHp", from_general, QStringList(), QString(),
-                           QString::number(ClientInstance->getPlayer(who)->getHp()), QString::number(ClientInstance->getPlayer(who)->getMaxHp()));
+        log_box->appendLog("#GetHp", from_general, QStringList(), QString(), hp, maxhp);
     }
 }
 
@@ -2829,6 +2826,7 @@ void RoomScene::onGameOver() {
     fillTable(loser_table, loser_list);
 
     addRestartButton(dialog);
+    connect(dialog, SIGNAL(rejected()), this, SIGNAL(game_over_dialog_rejected()));
     m_roomMutex.unlock();
     dialog->exec();
 }
@@ -2856,7 +2854,7 @@ void RoomScene::addRestartButton(QDialog *dialog) {
     connect(restart_button, SIGNAL(clicked()), dialog, SLOT(accept()));
     connect(return_button, SIGNAL(clicked()), dialog, SLOT(accept()));
     connect(save_button, SIGNAL(clicked()), this, SLOT(saveReplayRecord()));
-    connect(dialog, SIGNAL(accepted()), this, SIGNAL(restart()));
+    connect(restart_button, SIGNAL(clicked()), this, SIGNAL(restart()));
     connect(return_button, SIGNAL(clicked()), this, SIGNAL(return_to_start()));
 }
 

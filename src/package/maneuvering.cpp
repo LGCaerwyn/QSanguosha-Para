@@ -65,24 +65,19 @@ void Analeptic::onUse(Room *room, const CardUseStruct &card_use) const{
 }
 
 void Analeptic::use(Room *room, ServerPlayer *source, QList<ServerPlayer *> &targets) const{
-    BasicCard::use(room, source, targets);
     if (targets.isEmpty())
-        room->cardEffect(this, source, source);
+        targets << source;
+    BasicCard::use(room, source, targets);
 }
 
 void Analeptic::onEffect(const CardEffectStruct &effect) const{
     Room *room = effect.to->getRoom();
     room->setEmotion(effect.to, "analeptic");
 
-    if (effect.to->hasFlag("Global_Dying") && Sanguosha->currentRoomState()->getCurrentCardUseReason() != CardUseStruct::CARD_USE_REASON_PLAY) {
-        // recover hp
-        RecoverStruct recover;
-        recover.card = this;
-        recover.who = effect.from;
-        room->recover(effect.to, recover);
-    } else {
+    if (effect.to->hasFlag("Global_Dying") && Sanguosha->currentRoomState()->getCurrentCardUseReason() != CardUseStruct::CARD_USE_REASON_PLAY)
+        room->recover(effect.to, RecoverStruct(effect.from, this));
+    else
         room->addPlayerMark(effect.to, "drank");
-    }
 }
 
 class FanSkill: public OneCardViewAsSkill {
@@ -245,14 +240,11 @@ public:
                     player->setFlags("-SilverLionRecover");
                     if (player->isWounded()) {
                         room->setEmotion(player, "armor/silver_lion");
-                        RecoverStruct recover;
-                        recover.card = card;
-                        room->recover(player, recover);
+                        room->recover(player, RecoverStruct(NULL, card));
                     }
                     return false;
                 }
             }
-
         }
         return false;
     }
@@ -355,7 +347,7 @@ void IronChain::onUse(Room *room, const CardUseStruct &card_use) const{
         log.card_str = card_use.card->toString();
         room->sendLog(log);
 
-        card_use.from->drawCards(1);
+        card_use.from->drawCards(1, "iron_chain");
     } else
         TrickCard::onUse(room, card_use);
 }

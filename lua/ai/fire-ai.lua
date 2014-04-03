@@ -18,7 +18,7 @@ sgs.ai_skill_use_func.QuhuCard = function(card, use, self)
 			local enemy_number = enemy_max_card and enemy_max_card:getNumber() or 0
 			if enemy_max_card and enemy:hasSkill("yingyang") then enemy_number = math.min(enemy_number + 3, 13) end
 			local allknown = 0
-			if self:getKnownNum(enemy) == enemy:getHandcardNum() then
+			if getKnownNum(enemy) == enemy:getHandcardNum() then
 				allknown = allknown + 1
 			end
 			if (enemy_max_card and max_point > enemy_max_card:getNumber() and allknown > 0)
@@ -74,7 +74,6 @@ sgs.ai_skill_playerchosen.quhu = sgs.ai_skill_playerchosen.damage
 sgs.ai_playerchosen_intention.quhu = 80
 
 sgs.ai_card_intention.QuhuCard = 0
-sgs.dynamic_value.control_card.QuhuCard = true
 
 sgs.ai_skill_playerchosen.jieming = function(self, targets)
 	local friends = {}
@@ -487,8 +486,6 @@ sgs.ai_cardneed.tianyi = function(to, card, self)
 end
 
 sgs.ai_card_intention.TianyiCard = 0
-sgs.dynamic_value.control_card.TianyiCard = true
-
 sgs.ai_use_value.TianyiCard = 8.5
 
 local luanji_skill = {}

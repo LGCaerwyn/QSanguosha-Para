@@ -500,12 +500,25 @@ bool ServerPlayer::pindian(ServerPlayer *target, const QString &reason, const Ca
     pindian_struct.to_number = card2->getNumber();
     pindian_struct.reason = reason;
 
-    CardMoveReason reason1(CardMoveReason::S_REASON_PINDIAN, pindian_struct.from->objectName(), pindian_struct.to->objectName(),
-                           pindian_struct.reason, QString());
-    room->moveCardTo(pindian_struct.from_card, pindian_struct.from, NULL, Player::PlaceTable, reason1, true);
+    QList<CardsMoveStruct> moves;
+    CardsMoveStruct move_table_1;
+    move_table_1.card_ids << pindian_struct.from_card->getEffectiveId();
+    move_table_1.from = pindian_struct.from;
+    move_table_1.to = NULL;
+    move_table_1.to_place = Player::PlaceTable;
+    move_table_1.reason = CardMoveReason(CardMoveReason::S_REASON_PINDIAN, pindian_struct.from->objectName(),
+                                         pindian_struct.to->objectName(), pindian_struct.reason, QString());
 
-    CardMoveReason reason2(CardMoveReason::S_REASON_PINDIAN, pindian_struct.to->objectName());
-    room->moveCardTo(pindian_struct.to_card, pindian_struct.to, NULL, Player::PlaceTable, reason2, true);
+    CardsMoveStruct move_table_2;
+    move_table_2.card_ids << pindian_struct.to_card->getEffectiveId();
+    move_table_2.from = pindian_struct.to;
+    move_table_2.to = NULL;
+    move_table_2.to_place = Player::PlaceTable;
+    move_table_2.reason = CardMoveReason(CardMoveReason::S_REASON_PINDIAN, pindian_struct.to->objectName());
+
+    moves.append(move_table_1);
+    moves.append(move_table_2);
+    room->moveCardsAtomic(moves, true);
 
     LogMessage log2;
     log2.type = "$PindianResult";
@@ -549,16 +562,29 @@ bool ServerPlayer::pindian(ServerPlayer *target, const QString &reason, const Ca
     data = QVariant::fromValue(pindian_star);
     thread->trigger(Pindian, room, this, data);
 
+    moves.clear();
     if (room->getCardPlace(pindian_struct.from_card->getEffectiveId()) == Player::PlaceTable) {
-        CardMoveReason reason1(CardMoveReason::S_REASON_PINDIAN, pindian_struct.from->objectName(), pindian_struct.to->objectName(),
-                               pindian_struct.reason, QString());
-        room->moveCardTo(pindian_struct.from_card, pindian_struct.from, NULL, Player::DiscardPile, reason1, true);
+        CardsMoveStruct move_discard_1;
+        move_discard_1.card_ids << pindian_struct.from_card->getEffectiveId();
+        move_discard_1.from = pindian_struct.from;
+        move_discard_1.to = NULL;
+        move_discard_1.to_place = Player::DiscardPile;
+        move_discard_1.reason = CardMoveReason(CardMoveReason::S_REASON_PINDIAN, pindian_struct.from->objectName(),
+                                               pindian_struct.to->objectName(), pindian_struct.reason, QString());
+        moves.append(move_discard_1);
     }
 
     if (room->getCardPlace(pindian_struct.to_card->getEffectiveId()) == Player::PlaceTable) {
-        CardMoveReason reason2(CardMoveReason::S_REASON_PINDIAN, pindian_struct.to->objectName());
-        room->moveCardTo(pindian_struct.to_card, pindian_struct.to, NULL, Player::DiscardPile, reason2, true);
+        CardsMoveStruct move_discard_2;
+        move_discard_2.card_ids << pindian_struct.to_card->getEffectiveId();
+        move_discard_2.from = pindian_struct.to;
+        move_discard_2.to = NULL;
+        move_discard_2.to_place = Player::DiscardPile;
+        move_discard_2.reason = CardMoveReason(CardMoveReason::S_REASON_PINDIAN, pindian_struct.to->objectName());
+        moves.append(move_discard_2);
     }
+    if (!moves.isEmpty())
+        room->moveCardsAtomic(moves, true);
 
     QVariant decisionData = QVariant::fromValue(QString("pindian:%1:%2:%3:%4:%5")
                                                         .arg(reason)
@@ -991,24 +1017,13 @@ void ServerPlayer::marshal(ServerPlayer *player) const{
         }
     }
 
-    foreach(const QString skill_name, skills) {
-        if (Sanguosha->getSkill(skill_name)->isVisible()) {
-            Json::Value args1;
-            args1[0] = S_GAME_EVENT_ACQUIRE_SKILL;
-            args1[1] = toJsonString(objectName());
-            args1[2] = toJsonString(skill_name);
-            room->doNotify(player, S_COMMAND_LOG_EVENT, args1);
-        }
-
-        foreach (const Skill *related_skill, Sanguosha->getRelatedSkills(skill_name)) {
-            if (!related_skill->isVisible()) {
-                Json::Value args2;
-                args2[0] = S_GAME_EVENT_ACQUIRE_SKILL;
-                args2[1] = toJsonString(objectName());
-                args2[2] = toJsonString(skill_name);
-                room->doNotify(player, S_COMMAND_LOG_EVENT, args2);
-            }
-        }
+    foreach(const Skill *skill, getVisibleSkillList(true)) {
+        QString skill_name = skill->objectName();
+        Json::Value args1;
+        args1[0] = S_GAME_EVENT_ACQUIRE_SKILL;
+        args1[1] = toJsonString(objectName());
+        args1[2] = toJsonString(skill_name);
+        room->doNotify(player, S_COMMAND_LOG_EVENT, args1);
     }
 
     foreach (QString flag, flags)
@@ -1103,7 +1118,7 @@ void ServerPlayer::exchangeFreelyFromPrivatePile(const QString &skill_name, cons
 
     int n = will_to_handcard.length();
     if (n == 0) return;
-    const Card *exchange_card = room->askForExchange(this, skill_name, n, include_equip);
+    const Card *exchange_card = room->askForExchange(this, skill_name, n, n, include_equip);
     will_to_pile = exchange_card->getSubcards();
     delete exchange_card;
 

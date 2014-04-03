@@ -218,12 +218,9 @@ void JujianCard::onEffect(const CardEffectStruct &effect) const{
     QString choice = room->askForChoice(effect.to, "jujian", choicelist.join("+"));
 
     if (choice == "draw")
-        effect.to->drawCards(2);
-    else if (choice == "recover") {
-        RecoverStruct recover;
-        recover.who = effect.from;
-        room->recover(effect.to, recover);
-    }
+        effect.to->drawCards(2, "jujian");
+    else if (choice == "recover")
+        room->recover(effect.to, RecoverStruct(effect.from));
     else if (choice == "reset") {
         if (effect.to->isChained())
             room->setPlayerProperty(effect.to, "chained", false);
@@ -276,7 +273,7 @@ public:
                 bool invoke = room->askForSkillInvoke(player, objectName(), data);
                 move.from->setFlags("-EnyuanDrawTarget");
                 if (invoke) {
-                    room->drawCards((ServerPlayer *)move.from, 1);
+                    room->drawCards((ServerPlayer *)move.from, 1, objectName());
                     room->broadcastSkillInvoke(objectName(), 1);
                 }
             }
@@ -290,7 +287,7 @@ public:
                     room->broadcastSkillInvoke(objectName(), 2);
                     const Card *card = NULL;
                     if (!source->isKongcheng())
-                        card = room->askForExchange(source, objectName(), 1, false, "EnyuanGive", true);
+                        card = room->askForExchange(source, objectName(), 1, 1, false, "EnyuanGive::" + player->objectName(), true);
                     if (card) {
                         CardMoveReason reason(CardMoveReason::S_REASON_GIVE, source->objectName(),
                                               player->objectName(), objectName(), QString());
@@ -319,7 +316,7 @@ public:
             ServerPlayer *to = room->askForPlayerChosen(fazheng, room->getOtherPlayers(fazheng), objectName(), "xuanhuo-invoke", true, true);
             if (to) {
                 room->broadcastSkillInvoke(objectName(), 1);
-                room->drawCards(to, 2);
+                room->drawCards(to, 2, objectName());
                 if (!fazheng->isAlive() || !to->isAlive())
                     return true;
 
@@ -410,11 +407,47 @@ public:
 class Xuanfeng: public TriggerSkill {
 public:
     Xuanfeng(): TriggerSkill("xuanfeng") {
-        events << CardsMoveOneTime << EventPhaseChanging;
+        events << CardsMoveOneTime << EventPhaseEnd << EventPhaseChanging;
     }
 
     virtual bool triggerable(const ServerPlayer *target) const{
         return target != NULL;
+    }
+
+    void perform(Room *room, ServerPlayer *lingtong) const{
+        QList<ServerPlayer *> targets;
+        foreach (ServerPlayer *target, room->getOtherPlayers(lingtong)) {
+            if (lingtong->canDiscard(target, "he"))
+                targets << target;
+        }
+        if (targets.isEmpty())
+            return;
+
+        if (lingtong->askForSkillInvoke(objectName())) {
+            room->broadcastSkillInvoke(objectName());
+
+            ServerPlayer *first = room->askForPlayerChosen(lingtong, targets, "xuanfeng");
+            ServerPlayer *second = NULL;
+            int first_id = -1;
+            int second_id = -1;
+            if (first != NULL) {
+                first_id = room->askForCardChosen(lingtong, first, "he", "xuanfeng", false, Card::MethodDiscard);
+                room->throwCard(first_id, first, lingtong);
+            }
+            if (!lingtong->isAlive())
+                return;
+            targets.clear();
+            foreach (ServerPlayer *target, room->getOtherPlayers(lingtong)) {
+                if (lingtong->canDiscard(target, "he"))
+                    targets << target;
+            }
+            if (!targets.isEmpty())
+                second = room->askForPlayerChosen(lingtong, targets, "xuanfeng");
+            if (second != NULL) {
+                second_id = room->askForCardChosen(lingtong, second, "he", "xuanfeng", false, Card::MethodDiscard);
+                room->throwCard(second_id, second, lingtong);
+            }
+        }
     }
 
     virtual bool trigger(TriggerEvent triggerEvent, Room *room, ServerPlayer *lingtong, QVariant &data) const{
@@ -427,47 +460,13 @@ public:
 
             if (lingtong->getPhase() == Player::Discard
                 && (move.reason.m_reason & CardMoveReason::S_MASK_BASIC_REASON) == CardMoveReason::S_REASON_DISCARD)
-                lingtong->setMark("xuanfeng", lingtong->getMark("xuanfeng") + move.card_ids.length());
+                lingtong->addMark("xuanfeng", move.card_ids.length());
 
-            if (TriggerSkill::triggerable(lingtong) &&
-                ((lingtong->getPhase() == Player::Discard && lingtong->getMark("xuanfeng") >= 2 && !lingtong->hasFlag("XuanfengUsed"))
-                 || move.from_places.contains(Player::PlaceEquip))) {
-                QList<ServerPlayer *> targets;
-                foreach (ServerPlayer *target, room->getOtherPlayers(lingtong)) {
-                    if (lingtong->canDiscard(target, "he"))
-                        targets << target;
-                }
-                if (targets.isEmpty())
-                    return false;
-
-                if (lingtong->askForSkillInvoke(objectName())) {
-                    if (!move.from_places.contains(Player::PlaceEquip))
-                        lingtong->setFlags("XuanfengUsed");
-                    room->broadcastSkillInvoke(objectName());
-
-                    ServerPlayer *first = room->askForPlayerChosen(lingtong, targets, "xuanfeng");
-                    ServerPlayer *second = NULL;
-                    int first_id = -1;
-                    int second_id = -1;
-                    if (first != NULL) {
-                        first_id = room->askForCardChosen(lingtong, first, "he", "xuanfeng", false, Card::MethodDiscard);
-                        room->throwCard(first_id, first, lingtong);
-                    }
-                    if (!lingtong->isAlive())
-                        return false;
-                    targets.clear();
-                    foreach (ServerPlayer *target, room->getOtherPlayers(lingtong)) {
-                        if (lingtong->canDiscard(target, "he"))
-                            targets << target;
-                    }
-                    if (!targets.isEmpty())
-                        second = room->askForPlayerChosen(lingtong, targets, "xuanfeng");
-                    if (second != NULL) {
-                        second_id = room->askForCardChosen(lingtong, second, "he", "xuanfeng", false, Card::MethodDiscard);
-                        room->throwCard(second_id, second, lingtong);
-                    }
-                }
-            }
+            if (move.from_places.contains(Player::PlaceEquip) && TriggerSkill::triggerable(lingtong))
+                perform(room, lingtong);
+        } else if (triggerEvent == EventPhaseEnd && TriggerSkill::triggerable(lingtong)
+                   && lingtong->getPhase() == Player::Discard && lingtong->getMark("xuanfeng") >= 2) {
+            perform(room, lingtong);
         }
 
         return false;
@@ -487,7 +486,7 @@ public:
             && room->askForSkillInvoke(player, objectName(), data)) {
             int x = qMin(5, damage.to->getHp());
             room->broadcastSkillInvoke(objectName(), (x >= 3 || !damage.to->faceUp()) ? 2 : 1);
-            damage.to->drawCards(x);
+            damage.to->drawCards(x, objectName());
             damage.to->turnOver();
         }
         return false;
@@ -644,7 +643,7 @@ void MingceCard::onEffect(const CardEffectStruct &effect) const{
             room->useCard(CardUseStruct(slash, effect.to, target), false);
         }
     } else if (choice == "draw") {
-        effect.to->drawCards(1);
+        effect.to->drawCards(1, "mingce");
     }
 }
 
@@ -777,7 +776,7 @@ void GanluCard::swapEquip(ServerPlayer *first, ServerPlayer *second) const{
                           CardMoveReason(CardMoveReason::S_REASON_SWAP, second->objectName(), first->objectName(), "ganlu", QString()));
     exchangeMove.push_back(move2);
     exchangeMove.push_back(move1);
-    room->moveCards(exchangeMove, false);
+    room->moveCardsAtomic(exchangeMove, false);
 }
 
 bool GanluCard::targetsFeasible(const QList<const Player *> &targets, const Player *Self) const{
@@ -847,10 +846,7 @@ public:
                     room->throwCard(card, player);
 
                 room->broadcastSkillInvoke(objectName());
-
-                RecoverStruct recover;
-                recover.who = wuguotai;
-                room->recover(player, recover);
+                room->recover(player, RecoverStruct(wuguotai));
             }
         }
         return false;
@@ -938,14 +934,14 @@ public:
         for (int i = 0; i < x; i++) {
             if (zhonghui->askForSkillInvoke("quanji")) {
                 room->broadcastSkillInvoke("quanji");
-                room->drawCards(zhonghui, 1);
+                room->drawCards(zhonghui, 1, objectName());
                 if (!zhonghui->isKongcheng()) {
                     int card_id;
                     if (zhonghui->getHandcardNum() == 1) {
                         room->getThread()->delay();
                         card_id = zhonghui->handCards().first();
                     } else
-                        card_id = room->askForExchange(zhonghui, "quanji", 1, false, "QuanjiPush")->getSubcards().first();
+                        card_id = room->askForExchange(zhonghui, "quanji", 1, 1, false, "QuanjiPush")->getSubcards().first();
                     zhonghui->addToPile("power", card_id);
                 }
             }
@@ -997,13 +993,10 @@ public:
 
         room->addPlayerMark(zhonghui, "zili");
         if (room->changeMaxHpForAwakenSkill(zhonghui)) {
-            if (zhonghui->isWounded() && room->askForChoice(zhonghui, objectName(), "recover+draw") == "recover") {
-                RecoverStruct recover;
-                recover.who = zhonghui;
-                room->recover(zhonghui, recover);
-            } else {
-                room->drawCards(zhonghui, 2);
-            }
+            if (zhonghui->isWounded() && room->askForChoice(zhonghui, objectName(), "recover+draw") == "recover")
+                room->recover(zhonghui, RecoverStruct(zhonghui));
+            else
+                room->drawCards(zhonghui, 2, objectName());
             room->acquireSkill(zhonghui, "paiyi");
         }
 
@@ -1085,7 +1078,7 @@ public:
 };
 
 Shangshi::Shangshi(): TriggerSkill("shangshi") {
-    events << HpChanged << MaxHpChanged << CardsMoveOneTime << EventPhaseChanging;
+    events << HpChanged << MaxHpChanged << CardsMoveOneTime;
     frequency = Frequent;
 }
 
@@ -1099,43 +1092,24 @@ int Shangshi::getMaxLostHp(ServerPlayer *zhangchunhua) const{
 bool Shangshi::trigger(TriggerEvent triggerEvent, Room *room, ServerPlayer *zhangchunhua, QVariant &data) const{
     int losthp = getMaxLostHp(zhangchunhua);
     if (triggerEvent == CardsMoveOneTime) {
+        bool can_invoke = false;
         CardsMoveOneTimeStruct move = data.value<CardsMoveOneTimeStruct>();
-        if (zhangchunhua->getPhase() == Player::Discard) {
-            bool changed = false;
-            if (move.from == zhangchunhua && move.from_places.contains(Player::PlaceHand))
-                changed = true;
-            if (move.to == zhangchunhua && move.to_place == Player::PlaceHand)
-                changed = true;
-            if (changed)
-                zhangchunhua->addMark("shangshi");
+        if (move.from == zhangchunhua && move.from_places.contains(Player::PlaceHand))
+            can_invoke = true;
+        if (move.to == zhangchunhua && move.to_place == Player::PlaceHand)
+            can_invoke = true;
+        if (!can_invoke)
             return false;
-        } else {
-            bool can_invoke = false;
-            if (move.from == zhangchunhua && move.from_places.contains(Player::PlaceHand))
-                can_invoke = true;
-            if (move.to == zhangchunhua && move.to_place == Player::PlaceHand)
-                can_invoke = true;
-            if (!can_invoke)
-                return false;
-        }
     } else if (triggerEvent == HpChanged || triggerEvent == MaxHpChanged) {
         if (zhangchunhua->getPhase() == Player::Discard) {
             zhangchunhua->addMark("shangshi");
             return false;
         }
-    } else if (triggerEvent == EventPhaseChanging) {
-        PhaseChangeStruct change = data.value<PhaseChangeStruct>();
-        if (change.from != Player::Discard)
-            return false;
-        if (zhangchunhua->getMark("shangshi") <= 0)
-            return false;
-        zhangchunhua->setMark("shangshi", 0);
     }
 
-    if (zhangchunhua->getHandcardNum()<losthp && zhangchunhua->getPhase() != Player::Discard
-        && zhangchunhua->askForSkillInvoke(objectName())) {
-        zhangchunhua->drawCards(losthp - zhangchunhua->getHandcardNum());
+    if (zhangchunhua->getHandcardNum() < losthp && zhangchunhua->askForSkillInvoke(objectName())) {
         room->broadcastSkillInvoke("shangshi");
+        zhangchunhua->drawCards(losthp - zhangchunhua->getHandcardNum(), objectName());
     }
 
     return false;

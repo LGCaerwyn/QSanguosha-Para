@@ -67,7 +67,7 @@ Engine::Engine()
     Sanguosha = this;
 
     lua = CreateLuaState();
-    DoLuaScript(lua, "lua/config.lua");
+    if (!DoLuaScript(lua, "lua/config.lua")) exit(1);
 
     QStringList stringlist_sp_convert = GetConfigFromLuaState(lua, "convert_pairs").toStringList();
     foreach (QString cv_pair, stringlist_sp_convert) {
@@ -90,7 +90,7 @@ Engine::Engine()
     _loadModScenarios();
     m_customScene = new CustomScenario();
 
-    DoLuaScript(lua, "lua/sanguosha.lua");
+    if (!DoLuaScript(lua, "lua/sanguosha.lua")) exit(1);
 
     // available game modes
     modes["02p"] = tr("2 players");
@@ -158,6 +158,10 @@ const Scenario *Engine::getScenario(const QString &name) const{
 
 void Engine::addSkills(const QList<const Skill *> &all_skills) {
     foreach (const Skill *skill, all_skills) {
+        if (!skill) {
+            QMessageBox::warning(NULL, "", tr("The engine tries to add an invalid skill").arg(skill->objectName()));
+            continue;
+        }
         if (skills.contains(skill->objectName()))
             QMessageBox::warning(NULL, "", tr("Duplicated skill : %1").arg(skill->objectName()));
 
@@ -239,6 +243,12 @@ void Engine::addPackage(Package *package) {
             luaArmor_className2objectName.insert(lcard->getClassName(), lcard->objectName());
             if (!luaArmors.keys().contains(lcard->getClassName()))
                 luaArmors.insert(lcard->getClassName(), lcard->clone());
+        } else if (card->isKindOf("LuaTreasure")) {
+            const LuaTreasure *lcard = qobject_cast<const LuaTreasure *>(card);
+            Q_ASSERT(lcard != NULL);
+            luaTreasure_className2objectName.insert(lcard->getClassName(), lcard->objectName());
+            if (!luaTreasures.keys().contains(lcard->getClassName()))
+                luaTreasures.insert(lcard->getClassName(), lcard->clone());
         } else {
             QString class_name = card->metaObject()->className();
             metaobjects.insert(class_name, card->metaObject());
@@ -533,6 +543,15 @@ Card *Engine::cloneCard(const QString &name, Card::Suit suit, int number, const 
         const LuaArmor *lcard = luaArmors.value(class_name, NULL);
         if (!lcard) return NULL;
         card = lcard->clone(suit, number);
+    } else if (luaTreasure_className2objectName.keys().contains(name)) {
+        const LuaTreasure *lcard = luaTreasures.value(name, NULL);
+        if (!lcard) return NULL;
+        card = lcard->clone(suit, number);
+    } else if (luaTreasure_className2objectName.values().contains(name)) {
+        QString class_name = luaTreasure_className2objectName.key(name, name);
+        const LuaTreasure *lcard = luaTreasures.value(class_name, NULL);
+        if (!lcard) return NULL;
+        card = lcard->clone(suit, number);
     } else {
         const QMetaObject *meta = metaobjects.value(name, NULL);
         if (meta == NULL)
@@ -617,11 +636,30 @@ QColor Engine::getKingdomColor(const QString &kingdom) const{
             }
             color_map[itor.key()] = color;
         }
-
         Q_ASSERT(!color_map.isEmpty());
     }
 
     return color_map.value(kingdom);
+}
+
+QMap<QString, QColor> Engine::getSkillTypeColorMap() const{
+    static QMap<QString, QColor> color_map;
+    if (color_map.isEmpty()) {
+        QVariantMap map = GetValueFromLuaState(lua, "config", "skill_type_colors").toMap();
+        QMapIterator<QString, QVariant> itor(map);
+        while (itor.hasNext()) {
+            itor.next();
+            QColor color(itor.value().toString());
+            if (!color.isValid()) {
+                qWarning("Invalid color for skill type %s", qPrintable(itor.key()));
+                color = QColor(128, 128, 128);
+            }
+            color_map[itor.key()] = color;
+        }
+        Q_ASSERT(!color_map.isEmpty());
+    }
+
+    return color_map;
 }
 
 QStringList Engine::getChattingEasyTexts() const{
@@ -694,7 +732,7 @@ QString Engine::getModeName(const QString &mode) const{
 }
 
 int Engine::getPlayerCount(const QString &mode) const{
-    if (modes.contains(mode)) {
+    if (modes.contains(mode) || isNormalGameMode(mode)) { // hidden pz settings?
         QRegExp rx("(\\d+)");
         int index = rx.indexIn(mode);
         if (index != -1)
@@ -718,7 +756,7 @@ QString Engine::getRoles(const QString &mode) const{
         return "ZFFF";
     }
 
-    if (modes.contains(mode)) {
+    if (modes.contains(mode) || isNormalGameMode(mode)) { // hidden pz settings?
         static const char *table1[] = {
             "",
             "",
@@ -796,11 +834,11 @@ int Engine::getCardCount() const{
 
 QStringList Engine::getLords(bool contain_banned) const{
     QStringList lords;
+    QStringList general_names = getLimitedGeneralNames();
 
     // add intrinsic lord
     foreach (QString lord, lord_list) {
-        const General *general = generals.value(lord);
-        if (getBanPackages().contains(general->getPackage()))
+        if (!general_names.contains(lord))
             continue;
         if (!contain_banned) {
             if (ServerInfo.GameMode.endsWith("p")
@@ -810,7 +848,7 @@ QStringList Engine::getLords(bool contain_banned) const{
                 || ServerInfo.GameMode == "custom_scenario")
                 if (Config.value("Banlist/Roles", "").toStringList().contains(lord))
                     continue;
-            if (Config.Enable2ndGeneral && BanPair::isBanned(general->objectName()))
+            if (Config.Enable2ndGeneral && BanPair::isBanned(lord))
                 continue;
         }
         lords << lord;
@@ -873,25 +911,15 @@ QStringList Engine::getRandomLords() const{
 QStringList Engine::getLimitedGeneralNames() const{
     QStringList general_names;
     QHashIterator<QString, const General *> itor(generals);
-    if (ServerInfo.GameMode == "04_1v3") {
-        QList<const General *> hulao_generals = QList<const General *>();
-        foreach (QString pack_name, GetConfigFromLuaState(lua, "hulao_packages").toStringList()) {
-             const Package *pack = Sanguosha->findChild<const Package *>(pack_name);
-             if (pack) hulao_generals << pack->findChildren<const General *>();
-        }
+    while (itor.hasNext()) {
+        itor.next();
+        if (!isGeneralHidden(itor.value()->objectName()) && !getBanPackages().contains(itor.value()->getPackage()))
+            general_names << itor.key();
+    }
 
-        foreach (const General *general, hulao_generals) {
-            if (isGeneralHidden(general->objectName()) || general->isTotallyHidden()
-                || general->objectName() == "shenlvbu1" || general->objectName() == "shenlvbu2")
-                continue;
-            general_names << general->objectName();
-        }
-    } else {
-        while (itor.hasNext()) {
-            itor.next();
-            if (!isGeneralHidden(itor.value()->objectName()) && !getBanPackages().contains(itor.value()->getPackage()))
-                general_names << itor.key();
-        }
+    // special case for neo standard package
+    if (getBanPackages().contains("standard") && !getBanPackages().contains("nostal_standard")) {
+        general_names << "zhenji" << "zhugeliang" << "sunquan" << "sunshangxiang";
     }
 
     return general_names;

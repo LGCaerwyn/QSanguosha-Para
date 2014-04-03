@@ -80,12 +80,12 @@ QString DamageStruct::getReason() const{
 }
 
 CardEffectStruct::CardEffectStruct()
-    : card(NULL), from(NULL), to(NULL), multiple(false)
+    : card(NULL), from(NULL), to(NULL), multiple(false), nullified(false)
 {
 }
 
 SlashEffectStruct::SlashEffectStruct()
-    : jink_num(1), slash(NULL), jink(NULL), from(NULL), to(NULL), drank(0), nature(DamageStruct::Normal)
+    : jink_num(1), slash(NULL), jink(NULL), from(NULL), to(NULL), drank(0), nature(DamageStruct::Normal), nullified(false)
 {
 }
 
@@ -99,8 +99,8 @@ DeathStruct::DeathStruct()
 {
 }
 
-RecoverStruct::RecoverStruct()
-    : recover(1), who(NULL), card(NULL)
+RecoverStruct::RecoverStruct(ServerPlayer *who, const Card *card, int recover)
+    : recover(recover), who(who), card(card)
 {
 }
 
@@ -151,7 +151,7 @@ PhaseChangeStruct::PhaseChangeStruct()
 }
 
 CardUseStruct::CardUseStruct()
-    : card(NULL), from(NULL), m_isOwnerUse(true), m_addHistory(true)
+    : card(NULL), from(NULL), m_isOwnerUse(true), m_addHistory(true), nullified_list(QStringList())
 {
 }
 
@@ -604,8 +604,15 @@ void RoomThread::run() {
             terminate();
             Sanguosha->unregisterRoom();
             return;
-        } else
+        } else if (triggerEvent == TurnBroken || triggerEvent == StageChange) { // caused in Debut trigger
+            ServerPlayer *first = room->getPlayers().first();
+            if (first->getRole() != "renegade")
+                first = room->getPlayers().at(1);
+            room->setCurrent(first);
+            actionNormal(game_rule);
+        } else {
             Q_ASSERT(false);
+        }
     }
 }
 

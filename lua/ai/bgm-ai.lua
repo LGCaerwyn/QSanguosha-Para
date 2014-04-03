@@ -11,16 +11,10 @@ sgs.ai_skill_invoke.chongzhen = function(self, data)
 end
 
 sgs.ai_choicemade_filter.skillInvoke.chongzhen = function(self, player, promptlist)
-	local target
-	for _, p in sgs.qlist(self.room:getOtherPlayers(player)) do
-		if p:hasFlag("ChongzhenTarget") then
-			target = p
-			break
-		end
-	end
+	local target = findPlayerByObjectName(self.room, promptlist[#promptlist - 1])
 	if target then
 		local intention = 60
-		if promptlist[3] == "yes" then
+		if promptlist[#promptlist] == "yes" then
 			if not self:hasLoseHandcardEffective(target) or (self:needKongcheng(target) and target:getHandcardNum() == 1) then
 				intention = 0
 			end
@@ -35,11 +29,7 @@ end
 
 sgs.ai_slash_prohibit.chongzhen = function(self, from, to, card)
 	if self:isFriend(to, from) then return false end
-	if from:hasSkill("tieji")
-		or (from:hasSkill("liegong") and from:getPhase() == sgs.Player_Play and (to:getHandcardNum() <= from:getAttackRange() or to:getHandcardNum() >= from:getHp()))
-		or (from:hasSkill("kofliegong") and from:getPhase() == sgs.Player_Play and to:getHandcardNum() >= from:getHp()) then
-		return false
-	end
+	if not sgs.isJinkAvailable(from, to, card) then return false end
 	if to:hasSkill("longdan") and to:getHandcardNum() >= 3 and from:getHandcardNum() > 1 then return true end
 	return false
 end
@@ -132,7 +122,7 @@ sgs.ai_skill_use_func.LihunCard = function(card, use, self)
 			local slash = self:getCard("Slash") or sgs.Sanguosha:cloneCard("slash")
 			for _, enemy in ipairs(self.enemies) do
 				if enemy:isMale() and self:slashIsEffective(slash, enemy) and self.player:distanceTo(enemy) == 1
-					and not enemy:hasSkills("fenyong|zhichi|fankui|ganglie|vsganglie|nosganglie|enyuan|nosenyuan|langgu|guixin|kongcheng")
+					and not enemy:hasSkills("fenyong|zhichi|fankui|nosfankui|ganglie|vsganglie|nosganglie|enyuan|nosenyuan|langgu|guixin|kongcheng")
 					and self:getCardsNum("Slash") + getKnownCard(enemy, self.player, "Slash") >= 3 then
 					target = enemy
 					break
@@ -327,7 +317,7 @@ sgs.ai_skill_use_func.DaheCard = function(card, use, self)
 				local enemy_number = enemy_max_card and enemy_max_card:getNumber() or 0
 				if enemy_max_card and enemy:hasSkill("yingyang") then enemy_number = math.min(enemy_number + 3, 13) end
 				local allknown = 0
-				if self:getKnownNum(enemy) == enemy:getHandcardNum() then
+				if getKnownNum(enemy) == enemy:getHandcardNum() then
 					allknown = allknown + 1
 				end
 				if (enemy_max_card and max_point > enemy_number and allknown > 0)
@@ -366,7 +356,6 @@ end
 sgs.ai_cardneed.dahe = sgs.ai_cardneed.bignumber
 
 sgs.ai_card_intention.DaheCard = 60
-sgs.dynamic_value.control_card.DaheCard = true
 
 sgs.ai_use_value.DaheCard = 8.5
 sgs.ai_use_priority.DaheCard = 8
@@ -401,7 +390,7 @@ sgs.ai_skill_use_func.TanhuCard = function(card, use, self)
 			local enemy_number = enemy_max_card and enemy_max_card:getNumber() or 0
 			if enemy_max_card and enemy:hasSkill("yingyang") then enemy_number = math.min(enemy_number + 3, 13) end
 			local allknown = 0
-			if self:getKnownNum(enemy) == enemy:getHandcardNum() then
+			if getKnownNum(enemy) == enemy:getHandcardNum() then
 				allknown = allknown + 1
 			end
 			if (enemy_max_card and max_point > enemy_number and allknown > 0)
@@ -437,7 +426,6 @@ end
 
 sgs.ai_cardneed.tanhu = sgs.ai_cardneed.bignumber
 sgs.ai_card_intention.TanhuCard = 30
-sgs.dynamic_value.control_card.TanhuCard = true
 sgs.ai_use_priority.TanhuCard = 8
 
 function sgs.ai_skill_pindian.tanhu(minusecard, self, requestor)
@@ -1130,11 +1118,11 @@ sgs.ai_card_intention.FuluanCard = function(self, card, from, tos)
 end
 
 local function need_huangen(self, who)
-	local card = sgs.Card_Parse(self.player:getTag("Huangen_user"):toString())
+	local card = sgs.Card_Parse(self.player:getTag("huangen"):toString())
 	if card == nil then return false end
-	local from = self.room:getCurrent()
+	local from = self.player:getTag("huangen"):toCardUse().from
 	if self:isEnemy(who) then
-		if card:isKindOf("GodSalvation") and who:isWounded() and self:hasTrickEffective(card, who, from) then
+		if card:isKindOf("GodSalvation") and who:isWounded() and who:getHp() < getBestHp(who) and self:hasTrickEffective(card, who, from) then
 			if hasManjuanEffect(who) then return true end
 			if self:isWeak(who) then return true end
 			if who:hasSkills(sgs.masochism_skill) then return true end
@@ -1162,63 +1150,23 @@ local function need_huangen(self, who)
 end
 
 sgs.ai_skill_use["@@huangen"] = function(self, prompt)
-	local card = sgs.Card_Parse(self.player:getTag("Huangen_user"):toString())
-	local first_index, second_index, third_index, forth_index, fifth_index
-	local i = 1
+	local card = self.player:getTag("huangen"):toCardUse().card
 	local players = sgs.QList2Table(self.room:getAllPlayers())
 	self:sort(players, "defense")
+	local target_table = {}
+	local targetslist = self.player:property("huangen_targets"):toString():split("+")
 	for _, player in ipairs(players) do
-		if player:hasFlag("HuangenTarget") then
-			if not first_index and need_huangen(self, player) then
-				first_index = i
-			elseif not second_index and need_huangen(self, player) then
-				second_index = i
-			elseif not third_index and need_huangen(self, player) then
-				third_index = i
-			elseif not forth_index and need_huangen(self, player) then
-				forth_index = i
-			elseif need_huangen(self, player) then
-				fifth_index = i
-			end
-			if fifth_index then break end
+		if table.contains(targetslist, player:objectName()) and need_huangen(self, player) then
+			table.insert(target_table, player:objectName())
+			if #target_table == self.player:getHp() then break end
 		end
-		i = i + 1
 	end
-	if not first_index then return "." end
-
-	local first, second, third, forth, fifth
-	if first_index then
-		first = players[first_index]:objectName()
-	end
-	if second_index then
-		second = players[second_index]:objectName()
-	end
-	if third_index then
-		third = players[third_index]:objectName()
-	end
-	if forth_index then
-		forth = players[forth_index]:objectName()
-	end
-	if fifth_index then
-		fifth = players[fifth_index]:objectName()
-	end
-
-	local hp = self.player:getHp()
-	if fifth_index and hp >= 5 then
-		return ("@HuangenCard=.->%s+%s+%s+%s+%s"):format(first, second, third, forth, fifth)
-	elseif forth_index and hp >= 4 then
-		return ("@HuangenCard=.->%s+%s+%s+%s"):format(first, second, third, forth)
-	elseif third_index and hp >= 3 then
-		return ("@HuangenCard=.->%s+%s+%s"):format(first, second, third)
-	elseif second_index and hp >= 2 then
-		return ("@HuangenCard=.->%s+%s"):format(first, second)
-	elseif first_index and hp >= 1 then
-		return ("@HuangenCard=.->%s"):format(first)
-	end
+	if #target_table == 0 then return "." end
+	return "@HuangenCard=.->" .. table.concat(target_table, "+")
 end
 
 sgs.ai_card_intention.HuangenCard = function(self, card, from, tos)
-	local cardx = sgs.Card_Parse(from:getTag("Huangen_user"):toString())
+	local cardx = self.player:getTag("huangen"):toCardUse().card
 	if not cardx then return end
 	for _, to in ipairs(tos) do
 		local intention = -80

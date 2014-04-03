@@ -83,11 +83,8 @@ public:
             }
         } else if (triggerEvent == DamageCaused && zhangjiao->isAlive() && zhangjiao->isWounded()) {
             DamageStruct damage = data.value<DamageStruct>();
-            if (damage.reason == objectName()) {
-                RecoverStruct recover;
-                recover.who = zhangjiao;
-                room->recover(zhangjiao, recover);
-            }
+            if (damage.reason == objectName() && !damage.chain)
+                room->recover(zhangjiao, RecoverStruct(zhangjiao));
         }
         return false;
     }
@@ -310,7 +307,7 @@ bool Jushou::onPhaseChange(ServerPlayer *target) const{
         Room *room = target->getRoom();
         if (room->askForSkillInvoke(target, objectName())) {          
             room->broadcastSkillInvoke("jushou");
-            target->drawCards(getJushouDrawNum(target));
+            target->drawCards(getJushouDrawNum(target), objectName());
             target->turnOver();
         }
     }
@@ -326,7 +323,7 @@ public:
 
     virtual bool trigger(TriggerEvent, Room *room, ServerPlayer *player, QVariant &) const{
         if (!room->askForSkillInvoke(player, objectName())) return false;
-        player->drawCards(1);
+        player->drawCards(1, objectName());
 
         const Card *card = room->askForUseCard(player, "TrickCard+^Nullification,EquipCard|.|.|hand", "@jiewei");
         if (!card) return false;
@@ -387,7 +384,7 @@ public:
 class Liegong: public TriggerSkill {
 public:
     Liegong(): TriggerSkill("liegong") {
-        events << TargetConfirmed;
+        events << TargetSpecified;
     }
 
     virtual bool trigger(TriggerEvent, Room *room, ServerPlayer *player, QVariant &data) const{
@@ -420,6 +417,7 @@ public:
     Kuanggu(): TriggerSkill("kuanggu") {
         frequency = Compulsory;
         events << Damage << PreDamageDone;
+        global = true;
     }
 
     virtual bool triggerable(const ServerPlayer *target) const{
@@ -428,10 +426,11 @@ public:
 
     virtual bool trigger(TriggerEvent triggerEvent, Room *room, ServerPlayer *player, QVariant &data) const{
         DamageStruct damage = data.value<DamageStruct>();
-        if (triggerEvent == PreDamageDone && damage.from && damage.from->hasSkill("kuanggu") && damage.from->isAlive()) {
+        if (triggerEvent == PreDamageDone) {
             ServerPlayer *weiyan = damage.from;
-            weiyan->tag["InvokeKuanggu"] = weiyan->distanceTo(damage.to) <= 1;
-        } else if (triggerEvent == Damage && player->hasSkill("kuanggu") && player->isAlive()) {
+            if (weiyan)
+                weiyan->tag["InvokeKuanggu"] = (weiyan->distanceTo(damage.to) <= 1);
+        } else if (triggerEvent == Damage && TriggerSkill::triggerable(player)) {
             bool invoke = player->tag.value("InvokeKuanggu", false).toBool();
             player->tag["InvokeKuanggu"] = false;
             if (invoke && player->isWounded()) {
@@ -444,10 +443,7 @@ public:
                 room->sendLog(log);
                 room->notifySkillInvoked(player, objectName());
 
-                RecoverStruct recover;
-                recover.who = player;
-                recover.recover = damage.damage;
-                room->recover(player, recover);
+                room->recover(player, RecoverStruct(player, NULL, damage.damage));
             }
         }
 
@@ -490,10 +486,7 @@ public:
             CardMoveReason reason(CardMoveReason::S_REASON_REMOVE_FROM_PILE, QString(), objectName(), QString());
             room->throwCard(Sanguosha->getCard(id), reason, NULL);
         } else {
-            RecoverStruct recover;
-            recover.who = zhoutai;
-            recover.recover = 1 - zhoutai->getHp();
-            room->recover(zhoutai, recover);
+            room->recover(zhoutai, RecoverStruct(zhoutai, NULL, 1 - zhoutai->getHp()));
         }
         return false;
     }
@@ -534,7 +527,7 @@ public:
                 room->broadcastSkillInvoke(objectName());
                 room->loseHp(player);
                 if (move.from->isAlive())
-                    room->drawCards((ServerPlayer *)move.from, 2);
+                    room->drawCards((ServerPlayer *)move.from, 2, "fenji");
             }
         }
         return false;
@@ -621,7 +614,7 @@ public:
     virtual bool trigger(TriggerEvent, Room *, ServerPlayer *player, QVariant &data) const{
         DamageStruct damage = data.value<DamageStruct>();
         if (player->isAlive() && damage.transfer && damage.transfer_reason == "tianxiang")
-            player->drawCards(player->getLostHp());
+            player->drawCards(player->getLostHp(), objectName());
         return false;
     }
 };

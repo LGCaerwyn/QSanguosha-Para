@@ -32,11 +32,11 @@ public:
     TaiwanSPPackage();
 };
 
-class WangZheZhiZhanPackage: public Package {
+class MiscellaneousPackage: public Package {
     Q_OBJECT
 
 public:
-    WangZheZhiZhanPackage();
+    MiscellaneousPackage();
 };
 
 class Yongsi: public TriggerSkill {
@@ -117,6 +117,15 @@ class QiangwuCard: public SkillCard {
 
 public:
     Q_INVOKABLE QiangwuCard();
+
+    virtual void use(Room *room, ServerPlayer *source, QList<ServerPlayer *> &targets) const;
+};
+
+class YinbingCard: public SkillCard {
+    Q_OBJECT
+
+public:
+    Q_INVOKABLE YinbingCard();
 
     virtual void use(Room *room, ServerPlayer *source, QList<ServerPlayer *> &targets) const;
 };

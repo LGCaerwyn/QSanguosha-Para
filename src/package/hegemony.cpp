@@ -30,7 +30,7 @@ public:
             } else {
                 room->broadcastSkillInvoke(objectName(), 3);
                 if (yuejin->isAlive())
-                    yuejin->drawCards(1);
+                    yuejin->drawCards(1, objectName());
             }
         }
         return false;
@@ -50,7 +50,7 @@ public:
             ServerPlayer *target = room->askForPlayerChosen(player, room->getOtherPlayers(player), objectName(), "shushen-invoke", true, true);
             if (target) {
                 room->broadcastSkillInvoke(objectName(), target->getGeneralName().contains("liubei") ? 2 : 1);
-                target->drawCards(1);
+                target->drawCards(1, objectName());
             } else {
                 break;
             }
@@ -78,11 +78,8 @@ public:
             int handcard_num = ganfuren->getHandcardNum();
             room->broadcastSkillInvoke(objectName());
             ganfuren->throwAllHandCards();
-            if (handcard_num >= ganfuren->getHp()) {
-                RecoverStruct recover;
-                recover.who = ganfuren;
-                room->recover(ganfuren, recover);
-            }
+            if (handcard_num >= ganfuren->getHp())
+                room->recover(ganfuren, RecoverStruct(ganfuren));
         }
         return false;
     }
@@ -110,7 +107,7 @@ void DuoshiCard::onUse(Room *room, const CardUseStruct &card_use) const{
 
 void DuoshiCard::onEffect(const CardEffectStruct &effect) const{
     Room *room = effect.from->getRoom();
-    effect.to->drawCards(2);
+    effect.to->drawCards(2, "duoshi");
     room->askForDiscard(effect.to, "duoshi", 2, 2, false, true);
 }
 
@@ -321,7 +318,7 @@ public:
                     room->sendLog(log);
                 }
 
-                player->drawCards(1);
+                player->drawCards(1, objectName());
             }
         } else if (triggerEvent == Death) {
             DeathStruct death = data.value<DeathStruct>();
@@ -446,12 +443,9 @@ void XiongyiCard::onUse(Room *room, const CardUseStruct &card_use) const{
 
 void XiongyiCard::use(Room *room, ServerPlayer *source, QList<ServerPlayer *> &targets) const{
     foreach (ServerPlayer *p, targets)
-        p->drawCards(3);
-    if (targets.length() <= room->getAlivePlayers().length() / 2 && source->isWounded()) {
-        RecoverStruct recover;
-        recover.who = source;
-        room->recover(source, recover);
-    }
+        p->drawCards(3, "xiongyi");
+    if (targets.length() <= room->getAlivePlayers().length() / 2 && source->isWounded())
+        room->recover(source, RecoverStruct(source));
 }
 
 class Xiongyi: public ZeroCardViewAsSkill {

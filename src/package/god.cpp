@@ -382,7 +382,7 @@ public:
 class Qinyin: public TriggerSkill {
 public:
     Qinyin(): TriggerSkill("qinyin") {
-        events << CardsMoveOneTime << EventPhaseChanging;
+        events << CardsMoveOneTime << EventPhaseEnd << EventPhaseChanging;
     }
 
     virtual bool triggerable(const ServerPlayer *target) const{
@@ -391,21 +391,28 @@ public:
 
     void perform(ServerPlayer *shenzhouyu) const{
         Room *room = shenzhouyu->getRoom();
-        QString result = room->askForChoice(shenzhouyu, objectName(), "up+down");
+        QStringList choices;
+        choices << "down" << "cancel";
         QList<ServerPlayer *> all_players = room->getAllPlayers();
+        foreach (ServerPlayer *player, all_players) {
+            if (player->isWounded()) {
+                choices.prepend("up");
+                break;
+            }
+        }
+        QString result = room->askForChoice(shenzhouyu, objectName(), choices.join("+"));
+        if (result == "cancel")
+            return;
+        else
+            room->notifySkillInvoked(shenzhouyu, "qinyin");
         if (result == "up") {
             room->broadcastSkillInvoke(objectName(), 2);
-            foreach (ServerPlayer *player, all_players) {
-                RecoverStruct recover;
-                recover.who = shenzhouyu;
-                room->recover(player, recover);
-            }
+            foreach (ServerPlayer *player, all_players)
+                room->recover(player, RecoverStruct(shenzhouyu));
         } else if (result == "down") {
-            foreach (ServerPlayer *player, all_players) {
-                room->loseHp(player);
-            }
-
             room->broadcastSkillInvoke(objectName(), 1);
+            foreach (ServerPlayer *player, all_players)
+                room->loseHp(player);
         }
     }
 
@@ -414,19 +421,14 @@ public:
             CardsMoveOneTimeStruct move = data.value<CardsMoveOneTimeStruct>();
             if (shenzhouyu->getPhase() == Player::Discard && move.from == shenzhouyu
                 && (move.reason.m_reason & CardMoveReason::S_MASK_BASIC_REASON) == CardMoveReason::S_REASON_DISCARD) {
-                shenzhouyu->setMark("qinyin", shenzhouyu->getMark("qinyin") + move.card_ids.size());
-                if (!shenzhouyu->hasFlag("QinyinUsed") && shenzhouyu->getMark("qinyin") >= 2) {
-                    if (TriggerSkill::triggerable(shenzhouyu) && shenzhouyu->askForSkillInvoke(objectName())) {
-                        shenzhouyu->setFlags("QinyinUsed");
-                        perform(shenzhouyu);
-                    }
-                }
+                shenzhouyu->addMark("qinyin", move.card_ids.size());
             }
+        } else if (triggerEvent == EventPhaseEnd && TriggerSkill::triggerable(shenzhouyu)
+                   && shenzhouyu->getPhase() == Player::Discard && shenzhouyu->getMark("qinyin") >= 2) {
+            perform(shenzhouyu);
         } else if (triggerEvent == EventPhaseChanging) {
             shenzhouyu->setMark("qinyin", 0);
-            shenzhouyu->setFlags("-QinyinUsed");
         }
-
         return false;
     }
 };
@@ -449,7 +451,7 @@ public:
                     room->broadcastSkillInvoke(objectName());
 
                     shencc->setFlags("GuixinUsing");
-                    if (players.length() >= 4)
+                    if (players.length() >= 4 && (shencc->getGeneralName() == "shencaocao" || shencc->getGeneral2Name() == "shencaocao"))
                         room->doLightbox("$GuixinAnimate");
 
                     foreach (ServerPlayer *player, players) {
@@ -730,7 +732,7 @@ public:
             data = data.toInt() + 7;
         } else if (triggerEvent == AfterDrawInitialCards) {
             room->broadcastSkillInvoke("qixing");
-            const Card *exchange_card = room->askForExchange(shenzhuge, "qixing", 7);
+            const Card *exchange_card = room->askForExchange(shenzhuge, "qixing", 7, 7);
             shenzhuge->addToPile("stars", exchange_card->getSubcards(), false);
             delete exchange_card;
         }

@@ -302,7 +302,7 @@ public:
         if (triggerEvent == EventPhaseEnd) {
             if (TriggerSkill::triggerable(player) && player->getPhase() == Player::Play) {
                 if (!player->hasFlag("ShengxiDamageInPlayPhase") && player->askForSkillInvoke(objectName()))
-                    player->drawCards(2);
+                    player->drawCards(2, objectName());
             }
             if (player->hasFlag("ShengxiDamageInPlayPhase"))
                 player->setFlags("-ShengxiDamageInPlayPhase");
@@ -330,7 +330,7 @@ public:
                 if (move.from == player || room->askForChoice(player, objectName(), "accept+reject") == "accept") {
                     room->broadcastSkillInvoke(objectName());
                     ServerPlayer *from = (ServerPlayer *)move.from;
-                    from->drawCards(1);
+                    from->drawCards(1, objectName());
                 } else {
                     LogMessage log;
                     log.type = "#ZhibaReject";
@@ -371,7 +371,8 @@ void ShangyiCard::onEffect(const CardEffectStruct &effect) const{
         if (list.length() > 0)
             choicelist.append("remainedgenerals");
     } else if (Config.EnableBasara) {
-        if (player->getGeneralName() == "anjiang" || player->getGeneral2Name() == "anjiang")
+        QString hidden_generals = player->property("basara_generals").toString();
+        if (!hidden_generals.isEmpty())
             choicelist.append("generals");
     } else if (!player->isLord()) {
         choicelist.append("role");
@@ -417,7 +418,7 @@ void ShangyiCard::onEffect(const CardEffectStruct &effect) const{
         arr[1] = QSanProtocol::Utils::toJsonArray(list);
         room->doNotify(effect.from, QSanProtocol::S_COMMAND_VIEW_GENERALS, arr);
     } else if (choice == "generals") {
-        QStringList list = room->getTag(player->objectName()).toStringList();
+        QStringList list = player->property("basara_generals").toString().split("+");
         foreach (QString name, list) {
             LogMessage log;
             log.type = "$ShangyiViewUnknown";
@@ -496,7 +497,7 @@ public:
         if (!use.card->isKindOf("Slash")) return false;
         foreach (ServerPlayer *p, use.to) {
             if (room->askForSkillInvoke(player, objectName(), QVariant::fromValue(p))) {
-                p->drawCards(1);
+                p->drawCards(1, objectName());
                 if (p->isAlive() && p->canDiscard(p, "he"))
                     room->askForDiscard(p, objectName(), 1, 1, false, true);
             }
@@ -549,7 +550,7 @@ public:
             }
         } else if (triggerEvent == TargetConfirming) {
             CardUseStruct use = data.value<CardUseStruct>();
-            if (!use.card || use.card->getTypeId() == Card::TypeEquip || use.card->getTypeId() == Card::TypeSkill)
+            if (use.card->getTypeId() == Card::TypeEquip || use.card->getTypeId() == Card::TypeSkill)
                 return false;
             if (use.to.length() != 1) return false;
             ServerPlayer *yuji = room->findPlayerBySkillName(objectName());
@@ -659,7 +660,7 @@ public:
 
                 foreach (ServerPlayer *p, hetaihous) {
                     if (p->isAlive() && room->askForSkillInvoke(p, objectName()))
-                        p->drawCards(3);
+                        p->drawCards(3, objectName());
                 }
             }
         }

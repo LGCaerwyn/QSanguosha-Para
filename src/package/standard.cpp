@@ -215,16 +215,17 @@ void DelayedTrick::onUse(Room *room, const CardUseStruct &card_use) const{
     WrappedCard *wrapped = Sanguosha->getWrappedCard(this->getEffectiveId());
     use.card = wrapped;
 
+    QVariant data = QVariant::fromValue(use);
+    RoomThread *thread = room->getThread();
+    thread->trigger(PreCardUsed, room, use.from, data);
+    use = data.value<CardUseStruct>();
+
     LogMessage log;
     log.from = use.from;
     log.to = use.to;
     log.type = "#UseCard";
     log.card_str = toString();
     room->sendLog(log);
-
-    QVariant data = QVariant::fromValue(use);
-    RoomThread *thread = room->getThread();
-    thread->trigger(PreCardUsed, room, use.from, data);
 
     CardMoveReason reason(CardMoveReason::S_REASON_USE, use.from->objectName(), use.to.first()->objectName(), this->getSkillName(), QString());
     room->moveCardTo(this, use.from, use.to.first(), Player::PlaceDelayedTrick, reason, true);
@@ -374,7 +375,7 @@ void Weapon::onUse(Room *room, const CardUseStruct &card_use) const{
         log.card_str = use.card->toString();
         room->sendLog(log);
 
-        player->drawCards(1);
+        player->drawCards(1, "weapon_recast");
         return;
     }
     EquipCard::onUse(room, use);

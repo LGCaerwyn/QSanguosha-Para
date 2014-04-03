@@ -1,4 +1,4 @@
--- utilities, i.e: convert QList<const Card> to Lua's native table
+-- utilities, i.e: convert QList<const Card *> to Lua's native table
 function sgs.QList2Table(qlist)
 	local t = {}
 	for i = 0, qlist:length() - 1 do
@@ -39,6 +39,7 @@ end
 -- copied from "Well House Consultants"
 -- used to split string into a table, similar with php' explode function
 function string:split(delimiter)
+	if #self == 0 then return {} end
 	local result = {}
 	local from = 1
 	local delim_from, delim_to = string.find(self, delimiter, from)

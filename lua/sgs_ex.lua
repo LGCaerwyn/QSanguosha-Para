@@ -314,17 +314,18 @@ function onUse_DelayedTrick(self, room, card_use)
 	local wrapped = sgs.Sanguosha:getWrappedCard(self:getEffectiveId())
 	use.card = wrapped
 
+	local data = sgs.QVariant()
+	data:setValue(use)
+	local thread = room:getThread()
+	thread:trigger(sgs.PreCardUsed, room, use.from, data)
+	use = data:toCardUse()
+
 	local logm = sgs.LogMessage()
 	logm.from = use.from
 	logm.to = use.to
 	logm.type = "#UseCard"
 	logm.card_str = self:toString()
 	room:sendLog(logm)
-
-	local data = sgs.QVariant()
-	data:setValue(use)
-	local thread = room:getThread()
-	thread:trigger(sgs.PreCardUsed, room, use.from, data)
 
 	local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_USE, use.from:objectName(), use.to:first():objectName(), self:getSkillName(), "")
 	room:moveCardTo(self, use.from, use.to:first(), sgs.Player_PlaceDelayedTrick, reason, true)
@@ -539,34 +540,46 @@ function sgs.CreateZeroCardViewAsSkill(spec)
 	return skill
 end
 
-function sgs.CreateWeapon(spec)
+function sgs.CreateEquipCard(spec)
+	assert(type(spec.location) == "number" and spec.location ~= sgs.EquipCard_DefensiveHorseLocation and spec.location ~= sgs.EquipCard_OffensiveHorseLocation)
 	assert(type(spec.name) == "string" or type(spec.class_name) == "string")
 	if not spec.name then spec.name = spec.class_name
 	elseif not spec.class_name then spec.class_name = spec.name end
 	if spec.suit then assert(type(spec.suit) == "number") end
 	if spec.number then assert(type(spec.number) == "number") end
-	assert(type(spec.range) == "number")
-	local card = sgs.LuaWeapon(spec.suit or sgs.Card_NoSuit, spec.number or 0, spec.range, spec.name, spec.class_name)
+	if spec.location == sgs.EquipCard_WeaponLocation then assert(type(spec.range) == "number") end
+
+	local card = nil
+	if spec.location == sgs.EquipCard_WeaponLocation then
+		card = sgs.LuaWeapon(spec.suit or sgs.Card_NoSuit, spec.number or 0, spec.range, spec.name, spec.class_name)
+	elseif spec.location == sgs.EquipCard_ArmorLocation then
+		card = sgs.LuaArmor(spec.suit or sgs.Card_NoSuit, spec.number or 0, spec.name, spec.class_name)
+	elseif spec.location == sgs.EquipCard_TreasureLocation then
+		card = sgs.LuaTreasure(spec.suit or sgs.Card_NoSuit, spec.number or 0, spec.name, spec.class_name)
+	end
+	assert(card ~= nil)
 
 	card.on_install = spec.on_install
 	card.on_uninstall = spec.on_uninstall
 
 	return card
+end
+
+function sgs.CreateWeapon(spec)
+	spec.location = sgs.EquipCard_WeaponLocation
+	return sgs.CreateEquipCard(spec)
 end
 
 function sgs.CreateArmor(spec)
-	assert(type(spec.name) == "string" or type(spec.class_name) == "string")
-	if not spec.name then spec.name = spec.class_name
-	elseif not spec.class_name then spec.class_name = spec.name end
-	if spec.suit then assert(type(spec.suit) == "number") end
-	if spec.number then assert(type(spec.number) == "number") end
-	local card = sgs.LuaArmor(spec.suit or sgs.Card_NoSuit, spec.number or 0, spec.name, spec.class_name)
-
-	card.on_install = spec.on_install
-	card.on_uninstall = spec.on_uninstall
-
-	return card
+	spec.location = sgs.EquipCard_ArmorLocation
+	return sgs.CreateEquipCard(spec)
 end
+
+function sgs.CreateTreasure(spec)
+	spec.location = sgs.EquipCard_TreasureLocation
+	return sgs.CreateEquipCard(spec)
+end
+
 
 function sgs.LoadTranslationTable(t)
 	for key, value in pairs(t) do

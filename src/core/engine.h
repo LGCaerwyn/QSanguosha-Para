@@ -23,6 +23,7 @@ class LuaBasicCard;
 class LuaTrickCard;
 class LuaWeapon;
 class LuaArmor;
+class LuaTreasure;
 
 struct lua_State;
 
@@ -52,6 +53,7 @@ public:
     QStringList getExtensions() const;
     QStringList getKingdoms() const;
     QColor getKingdomColor(const QString &kingdom) const;
+    QMap<QString, QColor> getSkillTypeColorMap() const;
     QStringList getChattingEasyTexts() const;
     QString getSetupString() const;
 
@@ -162,6 +164,8 @@ private:
     QHash<QString, const LuaWeapon*> luaWeapons;
     QHash<QString, QString> luaArmor_className2objectName;
     QHash<QString, const LuaArmor *> luaArmors;
+    QHash<QString, QString> luaTreasure_className2objectName;
+    QHash<QString, const LuaTreasure *> luaTreasures;
 
     QMultiMap<QString, QString> sp_convert_pairs;
     QStringList extra_hidden_generals;

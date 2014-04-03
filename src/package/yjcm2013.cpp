@@ -71,10 +71,7 @@ void RenxinCard::use(Room *room, ServerPlayer *player, QList<ServerPlayer *> &) 
     player->turnOver();
     CardMoveReason reason(CardMoveReason::S_REASON_GIVE, player->objectName(), who->objectName(), "renxin", QString());
     room->obtainCard(who, player->wholeHandCards(), reason, false);
-
-    RecoverStruct recover;
-    recover.who = player;
-    room->recover(who, recover);
+    room->recover(who, RecoverStruct(player));
 }
 
 class Renxin: public ZeroCardViewAsSkill {
@@ -125,7 +122,7 @@ public:
             if (player->getPhase() == Player::Play && player->getMark(objectName()) >= player->getHp()) {
                 if (room->askForSkillInvoke(player, objectName())) {
                     room->broadcastSkillInvoke(objectName());
-                    player->drawCards(2);
+                    player->drawCards(2, objectName());
                 }
             }
         }
@@ -212,9 +209,7 @@ public:
                                              .arg(target->objectName())
                                              .arg(types.first()).arg(types.last()),
                                      data)) {
-                RecoverStruct recover;
-                recover.who = target;
-                room->recover(target, recover);
+                room->recover(target, RecoverStruct(target));
             }
         }
     }
@@ -243,7 +238,7 @@ public:
                     data = QVariant::fromValue(use);
                 }
                 if (use.card->isRed())
-                    guanping->drawCards(1);
+                    guanping->drawCards(1, objectName());
             }
         }
         return false;
@@ -828,11 +823,7 @@ public:
             room->showCard(to, ids.first());
 
             if (card->isKindOf("EquipCard")) {
-                if (to->isWounded()) {
-                    RecoverStruct recover;
-                    recover.who = target;
-                    room->recover(to, recover);
-                }
+                room->recover(to, RecoverStruct(target));
                 if (to->isAlive() && !to->isCardLimited(card, Card::MethodUse))
                     room->useCard(CardUseStruct(card, to, to));
             }
@@ -849,7 +840,7 @@ public:
 
     virtual bool trigger(TriggerEvent, Room *room, ServerPlayer *player, QVariant &data) const{
         if (room->askForSkillInvoke(player, objectName(), data)) {
-            player->drawCards(1);
+            player->drawCards(1, objectName());
             ServerPlayer *current = room->getCurrent();
             if (current && current->isAlive() && current->getPhase() != Player::NotActive) {
                 room->broadcastSkillInvoke(objectName());
@@ -999,7 +990,7 @@ public:
         CardUseStruct use = data.value<CardUseStruct>();
         if (use.card->isKindOf("SingleTargetTrick") && !use.card->targetFixed() && use.to.length() > 1
             && use.card->isBlack() && use.from->hasSkill("mieji"))
-            room->broadcastSkillInvoke(objectName());
+            room->broadcastSkillInvoke("mieji");
         return false;
     }
 };

@@ -1,5 +1,5 @@
 caocao					62					
-simayi					65					
+simayi					69					
 xiahoudun				68					
 zhangliao				72					
 xuchu					73					
@@ -14,11 +14,11 @@ xunyu					17
 caopi					26					
 dengai					81					
 liubei					19					
-guanyu					57					
+guanyu					70					
 zhangfei				25					
 zhugeliang				64					
 zhaoyun					74					
-machao					65					
+machao					70					
 huangyueying			65					
 huangzhong				75					
 weiyan					74					
@@ -28,10 +28,11 @@ jiangwei				78
 liushan					46					
 menghuo					62					
 zhurong					44					
+st_xushu				70					
 sunquan					99					
 ganning					69					
 lvmeng					68					
-huanggai				55					
+huanggai				60					
 zhouyu					82					
 daqiao					14					
 luxun					57					
@@ -43,8 +44,8 @@ taishici				50
 zhoutai					55					
 lusu					60					
 erzhang					16					
-huatuo					63					
-lvbu					76					
+huatuo					65					
+lvbu					77					
 diaochan				72					
 yuanshao				21					
 yanliangwenchou			67					
@@ -57,6 +58,7 @@ yuji					55
 caiwenji				52 *				
 st_yuanshu				10					
 st_huaxiong				36					
+st_gongsunzan			48					
 shenguanyu				28 *				
 shenlvmeng				100					
 shenzhouyu				64					
@@ -111,6 +113,7 @@ erqiao					60
 xiahoushi				51					
 caoang					55					
 xingcai					67					
+zumao					50					
 zhugeke					78					
 lingcao					94					
 sunru					34					
@@ -186,16 +189,25 @@ kof_daqiao				55
 kof_huatuo				65					
 kof_pangde				56					
 nos_caocao				60					
+nos_simayi				65					
 nos_xiahoudun			62					
 nos_zhangliao			22					
 nos_xuchu				32					
+nos_guojia				62					
 nos_liubei				19					
+nos_guanyu				57					
 nos_zhangfei			23					
 nos_zhaoyun				68					
+nos_machao				65					
 nos_huangyueying		61					
+nos_ganning				69					
 nos_lvmeng				63					
+nos_huanggai			55					
 nos_zhouyu				82					
+nos_daqiao				14					
 nos_luxun				57					
+nos_huatuo				63					
+nos_lvbu				76					
 nos_diaochan			72					
 nos_caoren				61					
 nos_zhoutai				40					

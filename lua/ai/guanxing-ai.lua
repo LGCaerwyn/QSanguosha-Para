@@ -680,7 +680,7 @@ function SmartAI:getValuableCardForGuanxing(cards)
 			if aplayer:containsTrick("lightning") then
 				lightning = true
 			end
-			if aplayer:hasSkills("guicai|guidao") and self:isEnemy(aplayer) then
+			if aplayer:hasSkills("guicai|nosguicai|guidao") and self:isEnemy(aplayer) then
 				canRetrial = true
 			end
 		end
@@ -727,8 +727,8 @@ function SmartAI:getValuableCardForGuanxing(cards)
 					hit_num = hit_num + 1
 					if getCardsNum("Jink", enemy, self.player) < 1
 						or enemy:isKongcheng()
-						or self:canLiegong(enemy, self.player)
-						or self.player:hasSkills("tieji|wushuang|dahe|qianxi")
+						or sgs.isJinkAvailable(self.player, enemy)
+						or self.player:hasSkills("wushuang|dahe|qianxi")
 						or self.player:hasSkill("roulin") and enemy:isFemale()
 						or (self.player:hasWeapon("Axe") or self:getCardsNum("Axe") > 0) and self.player:getCards("he"):length() > 4
 						then
@@ -749,7 +749,7 @@ function SmartAI:getValuableCardForGuanxing(cards)
 		self:sort(self.enemies, "defense")
 
 		if crossbow then
-			if self:getCardsNum("Slash") > 1 or self.player:hasSkills("kurou|keji") then
+			if self:getCardsNum("Slash") > 1 or self.player:hasSkills("noskurou|keji") then
 				return crossbow
 			end
 			if self.player:hasSkill("guixin") and self.room:alivePlayerCount() >= 6 and (self.player:getHp() > 1 or self:getCardsNum("Peach") > 0) then

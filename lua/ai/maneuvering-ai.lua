@@ -174,11 +174,7 @@ function SmartAI:shouldUseAnaleptic(target, slash)
 		return
 	end
 
-	local hcard = target:getHandcardNum()
-	if self.player:hasSkill("liegong") and self.player:getPhase() == sgs.Player_Play and (hcard >= self.player:getHp() or hcard <= self.player:getAttackRange()) then return true end
-	if self.player:hasSkill("kofliegong") and self.player:getPhase() == sgs.Player_Play and hcard >= self.player:getHp() then return true end
-	if self.player:hasSkill("tieji") then return true end
-
+	if not sgs.isJinkAvailable(self.player, target, slash) then return true end
 	if self.player:hasWeapon("axe") and self.player:getCards("he"):length() > 4 then return true end
 	if target:hasFlag("dahe") then return true end
 
@@ -664,7 +660,7 @@ function SmartAI:useCardFireAttack(fire_attack, use)
 	end
 
 	if (not use.current_targets or not table.contains(use.current_targets, self.player:objectName()))
-		and self.role ~= "renegade" and can_FireAttack_self and self.player:isChained() and self:isGoodChainTarget(self.player, sgs.DamageStruct_Fire, nil, fire_attack)
+		and self.role ~= "renegade" and can_FireAttack_self and self.player:isChained() and self:isGoodChainTarget(self.player, self.player, sgs.DamageStruct_Fire, nil, fire_attack)
 		and self.player:getHandcardNum() > 1 and not self.player:hasSkill("jueqing") and not (self.player:hasSkill("mingshi") and self.player:getEquips():length() <= 2)
 		and not self.room:isProhibited(self.player, self.player, fire_attack)
 		and self:damageIsEffective(self.player, sgs.DamageStruct_Fire, self.player) and not self:cantbeHurt(self.player)

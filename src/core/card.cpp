@@ -572,6 +572,12 @@ void Card::onUse(Room *room, const CardUseStruct &use) const{
     card_use.to = targets;
 
     bool hidden = (card_use.card->getTypeId() == TypeSkill && !card_use.card->willThrow());
+
+    QVariant data = QVariant::fromValue(card_use);
+    RoomThread *thread = room->getThread();
+    thread->trigger(PreCardUsed, room, player, data);
+    card_use = data.value<CardUseStruct>();
+
     LogMessage log;
     log.from = player;
     if (!card_use.card->targetFixed() || card_use.to.length() > 1 || !card_use.to.contains(card_use.from))
@@ -598,11 +604,6 @@ void Card::onUse(Room *room, const CardUseStruct &use) const{
         used_cards.append(card_use.card->getSubcards());
     else
         used_cards << card_use.card->getEffectiveId();
-
-    QVariant data = QVariant::fromValue(card_use);
-    RoomThread *thread = room->getThread();
-    thread->trigger(PreCardUsed, room, player, data);
-    card_use = data.value<CardUseStruct>();
  
     if (card_use.card->getTypeId() != TypeSkill) {
         CardMoveReason reason(CardMoveReason::S_REASON_USE, player->objectName(), QString(), card_use.card->getSkillName(), QString());
@@ -621,18 +622,16 @@ void Card::onUse(Room *room, const CardUseStruct &use) const{
 }
 
 void Card::use(Room *room, ServerPlayer *source, QList<ServerPlayer *> &targets) const{
-    if (targets.length() == 1) {
-        room->cardEffect(this, source, targets.first());
-    } else {
-        foreach (ServerPlayer *target, targets) {
-            CardEffectStruct effect;
-            effect.card = this;
-            effect.from = source;
-            effect.to = target;
-            effect.multiple = false;
+    QStringList nullified_list = room->getTag("CardUseNullifiedList").toStringList();
+    foreach (ServerPlayer *target, targets) {
+        CardEffectStruct effect;
+        effect.card = this;
+        effect.from = source;
+        effect.to = target;
+        effect.multiple = (targets.length() > 1);
+        effect.nullified = (nullified_list.contains(target->objectName()));
 
-            room->cardEffect(effect);
-        }
+        room->cardEffect(effect);
     }
 
     if (room->getCardPlace(getEffectiveId()) == Player::PlaceTable) {

@@ -225,8 +225,8 @@ public:
     bool canSlashWithoutCrossbow() const;
     virtual bool isLastHandCard(const Card *card, bool contain = false) const = 0;
 
-    bool isJilei(const Card *card) const;
-    bool isLocked(const Card *card) const;
+    bool isJilei(const Card *card, bool isHandcard = false) const;
+    bool isLocked(const Card *card, bool isHandcard = false) const;
 
     void setCardLimitation(const char *limit_list, const char *pattern, bool single_turn = false);
     void removeCardLimitation(const char *limit_list, const char *pattern);
@@ -464,6 +464,8 @@ struct CardEffectStruct {
 
     ServerPlayer *from;
     ServerPlayer *to;
+
+    bool nullified;
 };
 
 struct SlashEffectStruct {
@@ -480,6 +482,8 @@ struct SlashEffectStruct {
     int drank;
 
     DamageStruct::Nature nature;
+
+    bool nullified;
 };
 
 struct CardUseStruct {
@@ -503,6 +507,7 @@ struct CardUseStruct {
     bool m_isOwnerUse;
     bool m_addHistory;
     bool m_isHandcard;
+    QStringList nullified_list;
 };
 
 struct CardsMoveStruct {
@@ -551,7 +556,7 @@ struct DeathStruct {
 };
 
 struct RecoverStruct {
-    RecoverStruct();
+    RecoverStruct(ServerPlayer *who = NULL, const Card *card = NULL, int recover = 1);
 
     int recover;
     ServerPlayer *who;
@@ -629,9 +634,9 @@ enum TriggerEvent {
     PreHpRecover,
     HpRecover,
     PreHpLost,
+    HpLost,
     HpChanged,
     MaxHpChanged,
-    PostHpReduced,
 
     EventLoseSkill,
     EventAcquireSkill,
@@ -683,7 +688,9 @@ enum TriggerEvent {
 
     PreCardUsed, // for AI to filter events only.
     CardUsed,
+    TargetSpecifying,
     TargetConfirming,
+    TargetSpecified,
     TargetConfirmed,
     CardEffect, // for AI to filter events only
     CardEffected,
@@ -846,7 +853,7 @@ protected:
     QString user_string;
 };
 
-class DummyCard: public Card {
+class DummyCard: public SkillCard {
 public:
     DummyCard();
     DummyCard(const QList<int> &subcards);
@@ -1052,11 +1059,9 @@ public:
     void clearCardFlag(int card_id, ServerPlayer *who = NULL);
     void useCard(const CardUseStruct &card_use, bool add_history = true);
     void damage(const DamageStruct &data);
-    void sendDamageLog(const DamageStruct &data);
     void loseHp(ServerPlayer *victim, int lose = 1);
     void loseMaxHp(ServerPlayer *victim, int lose = 1);
     bool changeMaxHpForAwakenSkill(ServerPlayer *player, int magnitude = -1);
-    void applyDamage(ServerPlayer *victim, const DamageStruct &damage);
     void recover(ServerPlayer *player, const RecoverStruct &recover, bool set_emotion = false);
     bool cardEffect(const Card *card, ServerPlayer *from, ServerPlayer *to, bool multiple = false);
     bool cardEffect(const CardEffectStruct &effect);
@@ -1138,6 +1143,7 @@ public:
     void drawCards(QList<ServerPlayer *> players, QList<int> n_list, const char *reason = NULL);
     void obtainCard(ServerPlayer *target, const Card *card, bool unhide = true);
     void obtainCard(ServerPlayer *target, int card_id, bool unhide = true);
+    void obtainCard(ServerPlayer *target, const Card *card, const CardMoveReason &reason, bool unhide = true);
 
     void throwCard(int card_id, ServerPlayer *who, ServerPlayer *thrower = NULL);
     void throwCard(const Card *card, ServerPlayer *who, ServerPlayer *thrower = NULL);
@@ -1152,8 +1158,6 @@ public:
                     const CardMoveReason &reason, bool forceMoveVisible = false);
     void moveCardsAtomic(QList<CardsMoveStruct> cards_move, bool forceMoveVisible);
     void moveCardsAtomic(CardsMoveStruct cards_move, bool forceMoveVisible);
-    void moveCards(CardsMoveStruct cards_move, bool forceMoveVisible, bool ignoreChanges = true);
-    void moveCards(QList<CardsMoveStruct> cards_moves, bool forceMoveVisible, bool ignoreChanges = true);
 
     // interactive methods
     void activate(ServerPlayer *player, CardUseStruct &card_use);
@@ -1163,8 +1167,8 @@ public:
     QString askForChoice(ServerPlayer *player, const char *skill_name, const char *choices, const QVariant &data = QVariant());
     bool askForDiscard(ServerPlayer *target, const char *reason, int discard_num, int min_num,
                        bool optional = false, bool include_equip = false, const char *prompt = NULL);
-    const Card *askForExchange(ServerPlayer *player, const char *reason, int discard_num, bool include_equip = false,
-                               const char *prompt = NULL, bool optional = false);
+    const Card *askForExchange(ServerPlayer *player, const char *reason, int discard_num, int min_num,
+                               bool include_equip = false, const char *prompt = NULL, bool optional = false);
     bool askForNullification(const Card *trick, ServerPlayer *from, ServerPlayer *to, bool positive);
     bool isCanceled(const CardEffectStruct &effect);
     int askForCardChosen(ServerPlayer *player, ServerPlayer *who, const char *flags, const char *reason,

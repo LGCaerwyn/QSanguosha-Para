@@ -272,6 +272,7 @@ void Slash::onEffect(const CardEffectStruct &card_effect) const{
 
     effect.to = card_effect.to;
     effect.drank = this->drank;
+    effect.nullified = card_effect.nullified;
 
     QVariantList jink_list = effect.from->tag["Jink_" + toString()].toList();
     effect.jink_num = jink_list.takeFirst().toInt();
@@ -380,12 +381,7 @@ void Peach::onUse(Room *room, const CardUseStruct &card_use) const{
 void Peach::onEffect(const CardEffectStruct &effect) const{
     Room *room = effect.to->getRoom();
     room->setEmotion(effect.from, "peach");
-
-    // recover hp
-    RecoverStruct recover;
-    recover.card = this;
-    recover.who = effect.from;
-    room->recover(effect.to, recover);
+    room->recover(effect.to, RecoverStruct(effect.from, this));
 }
 
 bool Peach::isAvailable(const Player *player) const{
@@ -401,18 +397,11 @@ Crossbow::Crossbow(Suit suit, int number)
 class DoubleSwordSkill: public WeaponSkill {
 public:
     DoubleSwordSkill(): WeaponSkill("double_sword") {
-        events << TargetConfirmed;
-    }
-
-    virtual bool triggerable(const ServerPlayer *target) const{
-        return WeaponSkill::triggerable(target);
+        events << TargetSpecified;
     }
 
     virtual bool trigger(TriggerEvent, Room *room, ServerPlayer *player, QVariant &data) const{
         CardUseStruct use = data.value<CardUseStruct>();
-        if (use.from != player)
-            return false;
-
         foreach (ServerPlayer *to, use.to) {
             if (((use.from->isMale() && to->isFemale()) || (use.from->isFemale() && to->isMale()))
                 && use.card->isKindOf("Slash")) {
@@ -428,7 +417,7 @@ public:
                         if (!card) draw_card = true;
                     }
                     if (draw_card)
-                       use.from->drawCards(1);
+                       use.from->drawCards(1, objectName());
                 }
             }
         }
@@ -446,12 +435,12 @@ DoubleSword::DoubleSword(Suit suit, int number)
 class QinggangSwordSkill: public WeaponSkill {
 public:
     QinggangSwordSkill(): WeaponSkill("qinggang_sword") {
-        events << TargetConfirmed;
+        events << TargetSpecified;
     }
 
     virtual bool trigger(TriggerEvent, Room *room, ServerPlayer *player, QVariant &data) const{
         CardUseStruct use = data.value<CardUseStruct>();
-        if (WeaponSkill::triggerable(use.from) && use.from == player && use.card->isKindOf("Slash")) {
+        if (use.card->isKindOf("Slash")) {
             bool do_anim = false;
             foreach (ServerPlayer *p, use.to.toSet()) {
                 if (p->getMark("Equips_of_Others_Nullified_to_You") == 0) {
@@ -788,12 +777,8 @@ void GodSalvation::onEffect(const CardEffectStruct &effect) const{
     Room *room = effect.to->getRoom();
     if (!effect.to->isWounded())
         room->setEmotion(effect.to, "skill_nullify");
-    else {
-        RecoverStruct recover;
-        recover.card = this;
-        recover.who = effect.from;
-        room->recover(effect.to, recover);
-    }
+    else
+        room->recover(effect.to, RecoverStruct(effect.from, this));
 }
 
 SavageAssault::SavageAssault(Suit suit, int number)
@@ -1017,7 +1002,7 @@ void ExNihilo::onEffect(const CardEffectStruct &effect) const{
         }
         if (friend_num < enemy_num) extra = 1;
     }
-    effect.to->drawCards(2 + extra);
+    effect.to->drawCards(2 + extra, "ex_nihilo");
 }
 
 Duel::Duel(Suit suit, int number)
@@ -1367,7 +1352,7 @@ public:
             }
             if (count > 0) {
                 LogMessage log;
-                log.type = "$WoodenOx";
+                log.type = "#WoodenOx";
                 log.from = player;
                 log.arg = QString::number(count);
                 log.arg2 = "wooden_ox";
@@ -1488,7 +1473,7 @@ StandardCardPackage::StandardCardPackage()
     skills << new DoubleSwordSkill << new QinggangSwordSkill
            << new BladeSkill << new SpearSkill << new AxeSkill
            << new KylinBowSkill << new EightDiagramSkill
-           << new HalberdSkill << new WoodenOxSkill << new WoodenOxTriggerSkill;
+           << new HalberdSkill;
 
     skills << new SpearEmotion;
     related_skills.insertMulti("spear", "#spear-emotion");
@@ -1511,8 +1496,6 @@ StandardCardPackage::StandardCardPackage()
     cards << horses;
 
     skills << new HorseSkill;
-
-    cards << new WoodenOx(Card::Diamond, 5);
 
     cards << new AmazingGrace(Card::Heart, 3)
           << new AmazingGrace(Card::Heart, 4)
@@ -1551,8 +1534,6 @@ StandardCardPackage::StandardCardPackage()
 
     foreach (Card *card, cards)
         card->setParent(this);
-
-    addMetaObject<WoodenOxCard>();
 }
 
 StandardExCardPackage::StandardExCardPackage()
@@ -1570,6 +1551,21 @@ StandardExCardPackage::StandardExCardPackage()
         card->setParent(this);
 }
 
+LimitationBrokenPackage::LimitationBrokenPackage()
+    : Package("limitation_broken", Package::CardPack)
+{
+    QList<Card *> cards;
+    cards << new WoodenOx(Card::Diamond, 5);
+
+    skills << new WoodenOxSkill << new WoodenOxTriggerSkill;
+
+    foreach (Card *card, cards)
+        card->setParent(this);
+
+    addMetaObject<WoodenOxCard>();
+}
+
 ADD_PACKAGE(StandardCard)
 ADD_PACKAGE(StandardExCard)
+ADD_PACKAGE(LimitationBroken)
 

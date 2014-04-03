@@ -63,7 +63,7 @@ bool DrZhihengCard::targetsFeasible(const QList<const Player *> &targets, const 
 void DrZhihengCard::use(Room *room, ServerPlayer *source, QList<ServerPlayer *> &) const{
     if (source->isAlive() && source->getHp() > source->getHandcardNum()) {
         room->broadcastSkillInvoke("zhiheng");
-        room->drawCards(source, source->getHp() - source->getHandcardNum());
+        room->drawCards(source, source->getHp() - source->getHandcardNum(), "drzhiheng");
     }
 }
 
@@ -188,13 +188,13 @@ public:
 class DrWushuang: public TriggerSkill {
 public:
     DrWushuang(): TriggerSkill("drwushuang") {
-        events << TargetConfirmed;
+        events << TargetSpecified;
         frequency = Compulsory;
     }
 
     virtual bool trigger(TriggerEvent, Room *room, ServerPlayer *player, QVariant &data) const{
         CardUseStruct use = data.value<CardUseStruct>();
-        if (use.card->isKindOf("Slash") && use.from == player) {
+        if (use.card->isKindOf("Slash")) {
             QVariantList jink_list = player->tag["Jink_" + use.card->toString()].toList();
             int index = 0;
             for (int i = 0; i < use.to.length(); i++) {
@@ -244,7 +244,7 @@ public:
         if (!has_red) return false;
 
         DamageStruct damage = data.value<DamageStruct>();
-        if (room->askForCard(huatuo, ".|red", "@DrJijiuDecrease", data, objectName())) {
+        if (room->askForCard(huatuo, ".|red", "@drjijiu-decrease", data, objectName())) {
             room->broadcastSkillInvoke("jijiu");
             LogMessage log;
             log.type = "#DrJijiuDecrease";
@@ -268,10 +268,7 @@ DrQingnangCard::DrQingnangCard() {
 
 void DrQingnangCard::use(Room *room, ServerPlayer *source, QList<ServerPlayer *> &) const{
     room->broadcastSkillInvoke("qingnang");
-    RecoverStruct recover;
-    recover.card = this;
-    recover.who = source;
-    room->recover(source, recover);
+    room->recover(source, RecoverStruct(source, this));
 }
 
 class DrQingnang: public OneCardViewAsSkill {

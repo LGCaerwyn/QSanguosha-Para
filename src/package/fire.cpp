@@ -62,7 +62,7 @@ public:
             if (x <= 0) continue;
 
             room->broadcastSkillInvoke(objectName());
-            to->drawCards(x);
+            to->drawCards(x, objectName());
             if (!xunyu->isAlive())
                 break;
         }
@@ -322,11 +322,8 @@ public:
                 room->throwCard(trick, reason, NULL);
             }
 
-            RecoverStruct recover;
-            recover.recover = qMin(3, pangtong->getMaxHp()) - pangtong->getHp();
-            room->recover(pangtong, recover);
-
-            pangtong->drawCards(3);
+            room->recover(pangtong, RecoverStruct(pangtong, NULL, 3 - pangtong->getHp()));
+            pangtong->drawCards(3, objectName());
 
             if (pangtong->isChained())
                 room->setPlayerProperty(pangtong, "chained", false);
@@ -431,9 +428,9 @@ void TianyiCard::use(Room *room, ServerPlayer *taishici, QList<ServerPlayer *> &
         room->setPlayerCardLimitation(taishici, "use", "Slash", true);
 }
 
-class TianyiViewAsSkill: public ZeroCardViewAsSkill {
+class Tianyi: public ZeroCardViewAsSkill {
 public:
-    TianyiViewAsSkill(): ZeroCardViewAsSkill("tianyi") {
+    Tianyi(): ZeroCardViewAsSkill("tianyi") {
     }
 
     virtual bool isEnabledAtPlay(const Player *player) const{
@@ -442,25 +439,6 @@ public:
 
     virtual const Card *viewAs() const{
         return new TianyiCard;
-    }
-};
-
-class Tianyi: public TriggerSkill {
-public:
-    Tianyi(): TriggerSkill("tianyi") {
-        events << EventLoseSkill;
-        view_as_skill = new TianyiViewAsSkill;
-    }
-
-    virtual bool triggerable(const ServerPlayer *target) const{
-        return target && target->hasFlag("TianyiSuccess");
-    }
-
-    virtual bool trigger(TriggerEvent , Room *room, ServerPlayer *taishici, QVariant &data) const{
-        if (data.toString() == objectName())
-            room->setPlayerFlag(taishici, "-TianyiSuccess");
-
-        return false;
     }
 };
 

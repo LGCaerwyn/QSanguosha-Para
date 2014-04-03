@@ -68,13 +68,14 @@ lua_State *CreateLuaState() {
     return L;
 }
 
-void DoLuaScript(lua_State *L, const char *script) {
+bool DoLuaScript(lua_State *L, const char *script) {
     int error = luaL_dofile(L, script);
     if (error) {
         QString error_msg = lua_tostring(L, -1);
         QMessageBox::critical(NULL, QObject::tr("Lua script error"), error_msg);
-        exit(1);
+        return false;
     }
+    return true;
 }
 
 QStringList IntList2StringList(const QList<int> &intlist) {
@@ -114,5 +115,6 @@ QList<int> VariantList2IntList(const QVariantList &variantlist) {
 }
 
 bool isNormalGameMode(const QString &mode) {
-    return mode.endsWith("p") || mode.endsWith("pd") || mode.endsWith("pz");
+    QRegExp moderx("(0[2-9]|10)p[dz]*");
+    return moderx.exactMatch(mode);
 }

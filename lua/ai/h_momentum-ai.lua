@@ -1,28 +1,3 @@
-function sgs.ai_skill_invoke.wangxi(self, data)
-	local target = data:toPlayer()
-	if self:isFriend(target) then
-		return not self:needKongcheng(target, true) and not (hasManjuanEffect(self.player) and hasManjuanEffect(target))
-	else
-		if hasManjuanEffect(self.player) then return false end
-		return self:needKongcheng(target, true) or hasManjuanEffect(target)
-	end
-end
-
-sgs.ai_choicemade_filter.skillInvoke.wangxi = function(self, player, promptlist)
-	local damage = self.room:getTag("CurrentDamageStruct"):toDamage()
-	local target = nil
-	if damage.from and damage.from:objectName() == player:objectName() then
-		target = damage.to
-	elseif damage.to and damage.to:objectName() == player:objectName() then
-		target = damage.from
-	end
-	if target and promptlist[3] == "yes" then
-		if self:needKongcheng(target, true) then sgs.updateIntention(player, target, 10)
-		elseif not hasManjuanEffect(target) and player:getState() == "robot" then sgs.updateIntention(player, target, -60)
-		end
-	end
-end
-
 function sgs.ai_skill_invoke.hengjiang(self, data)
 	local target = data:toPlayer()
 	if self:isEnemy(target) then
@@ -37,7 +12,7 @@ function sgs.ai_skill_invoke.hengjiang(self, data)
 end
 
 sgs.ai_choicemade_filter.skillInvoke.hengjiang = function(self, player, promptlist)
-	if promptlist[3] == "yes" then
+	if promptlist[#promptlist] == "yes" then
 		local current = self.room:getCurrent()
 		if current and current:getPhase() <= sgs.Player_Discard
 			and not (current:hasSkill("keji") and not current:hasFlag("KejiSlashInPlayPhase")) and current:getHandcardNum() > current:getMaxCards() - 2 then
@@ -139,6 +114,8 @@ sgs.ai_skill_choice.yingyang = function(self, choices, data)
 		return (amFrom and self:isFriend(to)) and "down" or "up"
 	elseif table.contains(table_pindian_friends, reason) then
 		return (not amFrom and self:isFriend(from)) and "down" or "up"
+	elseif reason == "yijue" then
+		return (amFrom and self:isFriend(to)) and "down" or "up"
 	else
 		return "up"
 	end
@@ -213,7 +190,7 @@ sgs.ai_skill_invoke.hengzheng = function(self, data)
 end
 
 sgs.ai_skill_invoke.chuanxin = function(self, data)
-	local damage = damage:toDamage()
+	local damage = data:toDamage()
 	local invoke
 	local to = damage.to
 	if to:getMark("chuanxin_" .. self.player:objectName()) == 0 and to:getVisibleSkillList():length() > 1 then
@@ -222,7 +199,7 @@ sgs.ai_skill_invoke.chuanxin = function(self, data)
 			if not skill:isAttachedLordSkill() then count = count + 1 end
 		end
 		if count > 1 then
-			for _, skill in ipairs(("benghuai|shiyong|yaowu|wumou|chanyuan|jinjiu|tongji"):split("|")) do
+			for _, skill in ipairs(("benghuai|shiyong|yaowu|wumou|chanyuan|jinjiu|tongji|liyu"):split("|")) do
 				if to:hasSkill(skill) then
 					if self:isFriend(to) then return true
 					elseif (skill == "benghuai" or skill == "shiyong") and to:getMaxHp() <= 3 then return true
@@ -248,7 +225,7 @@ sgs.ai_skill_invoke.chuanxin = function(self, data)
 end
 
 sgs.ai_skill_choice.chuanxin = function(self, choices, data)
-	if self.player:hasSkills("benghuai|shiyong|yaowu|wumou|chanyuan|jinjiu|tongji") then return "detach" end
+	if self.player:hasSkills("benghuai|shiyong|yaowu|wumou|chanyuan|jinjiu|tongji|liyu") then return "detach" end
 	if self:needToLoseHp(self.player) or self:needToThrowArmor() or self.player:getEquips():length() <= 2 or self.player:hasSkills(sgs.lose_equip_skill) then
 		return "throw"
 	end
@@ -256,7 +233,7 @@ sgs.ai_skill_choice.chuanxin = function(self, choices, data)
 end
 
 sgs.ai_skill_choice.chuanxin_lose = function(self, choices, data)
-	for _, skill in ipairs(("benghuai|shiyong|yaowu|wumou|chanyuan|jinjiu|tongji|huwei|pianyi|xiaoxi"):split("|")) do
+	for _, skill in ipairs(("benghuai|shiyong|yaowu|wumou|chanyuan|jinjiu|tongji|liyu|huwei|pianyi|xiaoxi"):split("|")) do
 		if self.player:hasSkill(skill) then return skill end
 	end
 	for _, skill in sgs.qlist(self.player:getVisibleSkillList()) do
@@ -266,8 +243,11 @@ sgs.ai_skill_choice.chuanxin_lose = function(self, choices, data)
 		end
 	end
 	if self.player:hasSkill("cuorui") and self.player:getMark("CuoruiSkipJudge") > 0 then return "cuorui" end
+	if self.player:hasSkill("yingbing") and not self.player:hasSkill("zhoufu", true) then return "yingbing" end
+	if self.player:hasSkill("juedi") and not self.player:hasSkill("yinbing", true) then return "juedi" end
+	if self.player:hasSkill("kurou") and not self.player:hasSkill("zhaxiang", true) then return "kurou" end
 	if self.player:hasSkills("paoxiao+huxiao") then return "huxiao" end
-	if self.player:hasSkills("fankui+duodao") then return "duodao" end
+	if self.player:hasSkills("fankui+duodao|nosfankui+duodao") then return "duodao" end
 	if self.player:hasSkills("jilve+wansha") then return "wansha" end
 	if self.player:hasSkills("wuqian+wushuang") then return "wushuang" end
 	if self.player:hasSkills("tianfu+kanpo") then return "kanpo" end
@@ -316,7 +296,7 @@ sgs.ai_skill_choice.chuanxin_lose = function(self, choices, data)
 end
 
 sgs.ai_choicemade_filter.skillInvoke.fengshi = function(self, player, promptlist)
-	if promptlist[3] == "yes" then
+	if promptlist[#promptlist] == "yes" then
 		local fengshi_target
 		for _, p in sgs.qlist(self.room:getAllPlayers()) do
 			if p:hasFlag("FengshiTarget") then

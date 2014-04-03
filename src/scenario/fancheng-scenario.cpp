@@ -13,18 +13,12 @@ public:
         frequency = Compulsory;
     }
 
-    virtual bool trigger(TriggerEvent, Room *, ServerPlayer *player, QVariant &data) const{
+    virtual bool trigger(TriggerEvent, Room *room, ServerPlayer *player, QVariant &data) const{
         DamageStruct damage = data.value<DamageStruct>();
         if (damage.to->isLord()) {
             int x = damage.damage;
-            Room *room = player->getRoom();
-
-            RecoverStruct recover;
-            recover.card = damage.card;
-            recover.who = damage.from;
-            recover.recover = x * 2;
-            room->recover(damage.to, recover);
-            player->drawCards(x);
+            room->recover(damage.to, RecoverStruct(damage.from, NULL, x * 2));
+            player->drawCards(x, objectName());
         }
 
         return false;
@@ -211,7 +205,7 @@ public:
             if (guanyu->askForSkillInvoke("xiansheng")) {
                 guanyu->throwAllHandCardsAndEquips();
                 room->changeHero(guanyu, "shenguanyu", true);
-                room->drawCards(guanyu, 3);
+                room->drawCards(guanyu, 3, objectName());
             }
         }
         return false;
@@ -286,9 +280,9 @@ public:
                 ServerPlayer *sp_pangde = room->findPlayer("sp_pangde");
                 room->acquireSkill(sp_pangde, "taichen_fight");
 
-                ServerPlayer *huatuo = room->findPlayer("huatuo");
-                room->installEquip(huatuo, "hualiu");
-                room->acquireSkill(huatuo, "guagu");
+                ServerPlayer *nos_huatuo = room->findPlayer("nos_huatuo");
+                room->installEquip(nos_huatuo, "hualiu");
+                room->acquireSkill(nos_huatuo, "guagu");
 
                 ServerPlayer *lvmeng = room->findPlayer("lvmeng");
                 room->acquireSkill(lvmeng, "dujiang");
@@ -335,7 +329,7 @@ FanchengScenario::FanchengScenario()
     : Scenario("fancheng")
 {
     lord = "guanyu";
-    loyalists << "huatuo";
+    loyalists << "nos_huatuo";
     rebels << "caoren" << "sp_pangde" << "xuhuang";
     renegades << "lvmeng";
 

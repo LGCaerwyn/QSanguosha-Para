@@ -9,7 +9,7 @@
 class Zhenlie: public TriggerSkill {
 public:
     Zhenlie(): TriggerSkill("zhenlie") {
-        events << TargetConfirmed << CardEffected << SlashEffected;
+        events << TargetConfirmed;
     }
 
     virtual bool triggerable(const ServerPlayer *target) const{
@@ -17,51 +17,26 @@ public:
     }
 
     virtual bool trigger(TriggerEvent triggerEvent, Room *room, ServerPlayer *player, QVariant &data) const{
-        if (triggerEvent == TargetConfirmed) {
-            if (TriggerSkill::triggerable(player)) {
-                CardUseStruct use = data.value<CardUseStruct>();
-                if (use.to.contains(player) && use.from != player) {
-                    if (use.card->isKindOf("Slash") || use.card->isNDTrick()) {
-                        if (room->askForSkillInvoke(player, objectName(), data)) {
-                            room->broadcastSkillInvoke(objectName());
-                            room->setCardFlag(use.card, "ZhenlieNullify");
-                            player->setFlags("ZhenlieTarget");
-                            room->loseHp(player);
-                            if (player->isAlive() && player->hasFlag("ZhenlieTarget") && player->canDiscard(use.from, "he")) {
+        if (triggerEvent == TargetConfirmed && TriggerSkill::triggerable(player)) {
+            CardUseStruct use = data.value<CardUseStruct>();
+            if (use.to.contains(player) && use.from != player) {
+                if (use.card->isKindOf("Slash") || use.card->isNDTrick()) {
+                    if (room->askForSkillInvoke(player, objectName(), data)) {
+                        room->broadcastSkillInvoke(objectName());
+                        player->setFlags("-ZhenlieTarget");
+                        player->setFlags("ZhenlieTarget");
+                        room->loseHp(player);
+                        if (player->isAlive() && player->hasFlag("ZhenlieTarget")) {
+                            player->setFlags("-ZhenlieTarget");
+                            use.nullified_list << player->objectName();
+                            data = QVariant::fromValue(use);
+                            if (player->canDiscard(use.from, "he")) {
                                 int id = room->askForCardChosen(player, use.from, "he", objectName(), false, Card::MethodDiscard);
                                 room->throwCard(id, use.from, player);
                             }
                         }
                     }
                 }
-            }
-        } else if (triggerEvent == CardEffected) {
-            CardEffectStruct effect = data.value<CardEffectStruct>();
-            if (!effect.card->isKindOf("Slash") && effect.card->hasFlag("ZhenlieNullify") && player->hasFlag("ZhenlieTarget")) {
-                player->setFlags("-ZhenlieTarget");
-
-                LogMessage log;
-                log.type = "#DanlaoAvoid";
-                log.from = player;
-                log.arg = effect.card->objectName();
-                log.arg2 = objectName();
-                room->sendLog(log);
-
-                return true;
-            }
-        } else if (triggerEvent == SlashEffected) {
-            SlashEffectStruct effect = data.value<SlashEffectStruct>();
-            if (effect.slash->hasFlag("ZhenlieNullify") && player->hasFlag("ZhenlieTarget")) {
-                player->setFlags("-ZhenlieTarget");
-
-                LogMessage log;
-                log.type = "#DanlaoAvoid";
-                log.from = player;
-                log.arg = effect.slash->objectName();
-                log.arg2 = objectName();
-                room->sendLog(log);
-
-                return true;
             }
         }
         return false;
@@ -213,7 +188,7 @@ public:
 
     virtual void onDamaged(ServerPlayer *target, const DamageStruct &damage) const{
         if (target->askForSkillInvoke(objectName(), QVariant::fromValue(damage))) {
-            target->drawCards(1);
+            target->drawCards(1, objectName());
 
             Room *room = target->getRoom();
             room->broadcastSkillInvoke(objectName());
@@ -439,10 +414,7 @@ public:
             room->doLightbox("$FuliAnimate", 3000);
 
             room->removePlayerMark(liaohua, "@laoji");
-
-            RecoverStruct recover;
-            recover.recover = qMin(getKingdoms(room), liaohua->getMaxHp()) - liaohua->getHp();
-            room->recover(liaohua, recover);
+            room->recover(liaohua, RecoverStruct(liaohua, NULL, getKingdoms(room) - liaohua->getHp()));
 
             liaohua->turnOver();
         }
@@ -653,7 +625,7 @@ void JiefanCard::onEffect(const CardEffectStruct &effect) const{
     PlayerStar target = effect.from->tag["JiefanTarget"].value<PlayerStar>();
     QVariant data = effect.from->tag["JiefanTarget"];
     if (target && !room->askForCard(effect.to, ".Weapon", "@jiefan-discard::" + target->objectName(), data))
-        target->drawCards(1);
+        target->drawCards(1, "jiefan");
 }
 
 class Jiefan: public ZeroCardViewAsSkill {
@@ -704,7 +676,7 @@ void AnxuCard::use(Room *room, ServerPlayer *source, QList<ServerPlayer *> &targ
     from->obtainCard(cd);
     room->showCard(from, id);
     if (cd->getSuit() != Card::Spade)
-        source->drawCards(1);
+        source->drawCards(1, "anxu");
 }
 
 class Anxu: public ZeroCardViewAsSkill {
@@ -752,11 +724,8 @@ public:
         else
             room->broadcastSkillInvoke(objectName(), 1);
 
-        target->drawCards(3);
-        RecoverStruct recover;
-        recover.who = player;
-        recover.recover = 1;
-        room->recover(target, recover, true);
+        target->drawCards(3, objectName());
+        room->recover(target, RecoverStruct(player), true);
         return false;
     }
 };

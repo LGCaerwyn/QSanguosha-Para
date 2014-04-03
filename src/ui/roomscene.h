@@ -229,7 +229,7 @@ private:
     ResponseSkill *response_skill;
     ShowOrPindianSkill *showorpindian_skill;
     DiscardSkill *discard_skill;
-    YijiViewAsSkill *yiji_skill;
+    NosYijiViewAsSkill *yiji_skill;
     ChoosePlayerSkill *choose_skill;
 
     QList<const Player *> selected_targets;
@@ -392,6 +392,7 @@ private slots:
 signals:
     void restart();
     void return_to_start();
+    void game_over_dialog_rejected();
 };
 
 extern RoomScene *RoomSceneInstance;

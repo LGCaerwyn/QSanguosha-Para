@@ -7,7 +7,7 @@
 class Moukui: public TriggerSkill {
 public:
     Moukui(): TriggerSkill("moukui") {
-        events << TargetConfirmed << SlashMissed << CardFinished;
+        events << TargetSpecified << SlashMissed << CardFinished;
     }
 
     virtual bool triggerable(const ServerPlayer *target) const{
@@ -15,9 +15,9 @@ public:
     }
 
     virtual bool trigger(TriggerEvent triggerEvent, Room *room, ServerPlayer *player, QVariant &data) const{
-        if (triggerEvent == TargetConfirmed) {
+        if (triggerEvent == TargetSpecified && TriggerSkill::triggerable(player)) {
             CardUseStruct use = data.value<CardUseStruct>();
-            if (player != use.from || !TriggerSkill::triggerable(player) || !use.card->isKindOf("Slash"))
+            if (!use.card->isKindOf("Slash"))
                 return false;
             foreach (ServerPlayer *p, use.to) {
                 if (player->askForSkillInvoke(objectName(), QVariant::fromValue(p))) {
@@ -28,7 +28,7 @@ public:
                         choice = room->askForChoice(player, objectName(), "draw+discard", QVariant::fromValue(p));
                     if (choice == "draw") {
                         room->broadcastSkillInvoke(objectName(), 1);
-                        player->drawCards(1);
+                        player->drawCards(1, objectName());
                     } else {
                         room->broadcastSkillInvoke(objectName(), 2);
                         room->setTag("MoukuiDiscard", data);
@@ -72,7 +72,7 @@ public:
         if (use.card->isKindOf("Slash") && room->askForSkillInvoke(player, objectName())) {
             room->broadcastSkillInvoke(objectName(), 1);
             room->askForDiscard(player, objectName(), 2, 2, false, true);
-            player->drawCards(2);
+            player->drawCards(2, objectName());
 
             int max = -1000;
             foreach (ServerPlayer *p, room->getAllPlayers())
@@ -95,7 +95,7 @@ public:
                     index = 3;
                 room->broadcastSkillInvoke(objectName(), index);
                 room->askForDiscard(mosthp, objectName(), 2, 2, false, true);
-                mosthp->drawCards(2);
+                mosthp->drawCards(2, objectName());
             }
         }
 
@@ -104,9 +104,7 @@ public:
 };
 
 MizhaoCard::MizhaoCard() {
-    will_throw = false;
     mute = true;
-    handling_method = Card::MethodNone;
 }
 
 bool MizhaoCard::targetFilter(const QList<const Player *> &targets, const Player *to_select, const Player *Self) const{
@@ -114,7 +112,7 @@ bool MizhaoCard::targetFilter(const QList<const Player *> &targets, const Player
 }
 
 void MizhaoCard::onEffect(const CardEffectStruct &effect) const{
-    effect.to->obtainCard(effect.card, false);
+    effect.to->obtainCard(effect.from->wholeHandCards(), false);
     if (effect.to->isKongcheng()) return;
 
     Room *room = effect.from->getRoom();
@@ -133,26 +131,17 @@ void MizhaoCard::onEffect(const CardEffectStruct &effect) const{
     }
 }
 
-class MizhaoViewAsSkill: public ViewAsSkill {
+class MizhaoViewAsSkill: public ZeroCardViewAsSkill {
 public:
-    MizhaoViewAsSkill(): ViewAsSkill("mizhao") {
+    MizhaoViewAsSkill(): ZeroCardViewAsSkill("mizhao") {
     }
 
     virtual bool isEnabledAtPlay(const Player *player) const{
         return !player->isKongcheng() && !player->hasUsed("MizhaoCard");
     }
 
-    virtual bool viewFilter(const QList<const Card *> &, const Card *to_select) const{
-        return !to_select->isEquipped();
-    }
-
-    virtual const Card *viewAs(const QList<const Card *> &cards) const{
-        if (cards.length() < Self->getHandcardNum())
-            return NULL;
-
-        MizhaoCard *card = new MizhaoCard;
-        card->addSubcards(cards);
-        return card;
+    virtual const Card *viewAs() const{
+        return new MizhaoCard;
     }
 };
 

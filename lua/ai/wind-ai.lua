@@ -203,6 +203,13 @@ function sgs.ai_cardneed.liegong(to, card, self)
 			or (card:isKindOf("Weapon") and not (to:getWeapon() or getKnownCard(to, self, "Weapon") > 0))
 end
 
+sgs.ai_choicemade_filter.skillInvoke.liegong = function(self, player, promptlist)
+	if promptlist[#promptlist] == "yes" then
+		local target = findPlayerByObjectName(self.room, promptlist[#promptlist - 1])
+		if target then sgs.updateIntention(player, target, 50) end
+	end
+end
+
 function sgs.ai_cardneed.kuanggu(to, card, self)
 	return card:isKindOf("OffensiveHorse") and not (to:getOffensiveHorse() or getKnownCard(to, self, "OffensiveHorse", false) > 0)
 end
@@ -278,7 +285,7 @@ function SmartAI:findLeijiTarget(player, leiji_value, slasher, latest_version)
 	if not latest_version then
 		return self:findLeijiTarget(player, leiji_value, slasher, 1) or self:findLeijiTarget(player, leiji_value, slasher, -1)
 	end
-	if not player:hasSkill(latest_version == 1 and "leiji" or "nosleiji") then return nil end
+	if not player:hasSkill(latest_version == 1 and "leiji" or "nosleiji") or player:getMark("yijue") > 0 then return nil end
 	if slasher then
 		if not self:slashIsEffective(sgs.Sanguosha:cloneCard("slash"), player, slasher, slasher:hasWeapon("qinggang_sword")) then return nil end
 		if slasher:hasSkill("liegong") and slasher:getPhase() == sgs.Player_Play and self:isEnemy(player, slasher)
@@ -342,10 +349,8 @@ sgs.ai_playerchosen_intention.leiji = 80
 
 function sgs.ai_slash_prohibit.leiji(self, from, to, card)
 	if self:isFriend(to, from) then return false end
-	if to:hasFlag("QianxiTarget") and (not self:hasEightDiagramEffect(to) or self.player:hasWeapon("qinggang_sword")) then return false end
-	local hcard = to:getHandcardNum()
-	if from:hasSkill("liegong") and (hcard >= from:getHp() or hcard <= from:getAttackRange()) then return false end
-	if from:hasSkill("kofliegong") and hcard >= from:getHp() then return false end
+	if (to:hasFlag("QianxiTarget") or to:getMark("yijue") > 0) and (not self:hasEightDiagramEffect(to) or self.player:hasWeapon("qinggang_sword")) then return false end
+	if not sgs.isJinkAvailable(from, to, card, to:hasSkill("guidao")) then return false end
 	if from:getRole() == "rebel" and to:isLord() then
 		local other_rebel
 		for _, player in sgs.qlist(self.room:getOtherPlayers(from)) do
@@ -429,6 +434,8 @@ sgs.ai_skill_use_func.HuangtianCard = function(card, use, self)
 					flag = true
 				elseif self.player:hasSkill("xianzhen") and not self.player:hasUsed("XianzhenCard") then
 					flag = true
+				elseif self.player:hasSkill("yijue") and not self.player:hasUsed("YijueCard") then
+					flag = true
 				end
 				if flag then
 					local maxCard = self:getMaxCard(self.player)
@@ -478,7 +485,7 @@ sgs.ai_skill_invoke.fenji = function(self, data)
 end
 
 sgs.ai_choicemade_filter.skillInvoke.fenji = function(self, player, promptlist)
-	if promptlist[3] == "yes" then
+	if promptlist[#promptlist] == "yes" then
 		local fenji_target
 		for _, p in sgs.qlist(self.room:getAllPlayers()) do
 			if p:hasFlag("FenjiMoveFrom") then
@@ -519,7 +526,7 @@ sgs.ai_skill_use["@@tianxiang"] = function(self, data, method)
 
 	for _, enemy in ipairs(self.enemies) do
 		if (enemy:getHp() <= dmg.damage and enemy:isAlive()) then
-			if (enemy:getHandcardNum() <= 2 or enemy:hasSkills("guose|leiji|ganglie|nosganglie|vsganglie|enyuan|qingguo|wuyan|kongcheng") or enemy:containsTrick("indulgence"))
+			if (enemy:getHandcardNum() <= 2 or enemy:hasSkills("nosguose|guose|leiji|ganglie|nosganglie|vsganglie|enyuan|qingguo|wuyan|kongcheng") or enemy:containsTrick("indulgence"))
 				and self:canAttack(enemy, dmg.from or self.room:getCurrent(), dmg.nature)
 				and not (dmg.card and dmg.card:getTypeId() == sgs.Card_TypeTrick and enemy:hasSkill("wuyan")) then
 				return "@TianxiangCard=" .. card_id .. "->" .. enemy:objectName()
@@ -531,7 +538,7 @@ sgs.ai_skill_use["@@tianxiang"] = function(self, data, method)
 		if (friend:getLostHp() + dmg.damage > 1 and friend:isAlive()) then
 			if friend:isChained() and dmg.nature ~= sgs.DamageStruct_Normal and not self:isGoodChainTarget(friend, dmg.from, dmg.nature, dmg.damage, dmg.card) then
 			elseif friend:getHp() >= 2 and dmg.damage < 2
-					and (friend:hasSkills("yiji|buqu|nosbuqu|shuangxiong|zaiqi|yinghun|jianxiong|nosjianxiong|fangzhu")
+					and (friend:hasSkills("nosyiji|yiji|buqu|nosbuqu|shuangxiong|zaiqi|yinghun|jianxiong|nosjianxiong|fangzhu")
 						or self:getDamagedEffects(friend, dmg.from or self.room:getCurrent())
 						or self:needToLoseHp(friend)
 						or (friend:getHandcardNum() < 3 and (friend:hasSkill("nosrende") or (friend:hasSkill("rende") and not friend:hasUsed("RendeCard"))))) then
@@ -545,7 +552,7 @@ sgs.ai_skill_use["@@tianxiang"] = function(self, data, method)
 	for _, enemy in ipairs(self.enemies) do
 		if (enemy:getLostHp() <= 1 or dmg.damage > 1) and enemy:isAlive() then
 			if (enemy:getHandcardNum() <= 2)
-				or enemy:containsTrick("indulgence") or enemy:hasSkills("guose|leiji|ganglie|vsganglie|nosganglie|enyuan|qingguo|wuyan|kongcheng")
+				or enemy:containsTrick("indulgence") or enemy:hasSkills("nosguose|guose|leiji|ganglie|vsganglie|nosganglie|enyuan|qingguo|wuyan|kongcheng")
 				and self:canAttack(enemy, (dmg.from or self.room:getCurrent()), dmg.nature)
 				and not (dmg.card and dmg.card:getTypeId() == sgs.Card_TypeTrick and enemy:hasSkill("wuyan")) then
 				return "@TianxiangCard=" .. card_id .. "->" .. enemy:objectName() end
@@ -567,7 +574,7 @@ end
 sgs.ai_card_intention.TianxiangCard = function(self, card, from, tos)
 	local to = tos[1]
 	if self:getDamagedEffects(to) or self:needToLoseHp(to) or hasBuquEffect(to)
-		or (to:getHp() >= 2 and to:hasSkills("yiji|shuangxiong|zaiqi|yinghun|jianxiong|nosjianxiong|fangzhu"))
+		or (to:getHp() >= 2 and to:hasSkills("nosyiji|yiji|shuangxiong|zaiqi|yinghun|jianxiong|nosjianxiong|fangzhu"))
 		or (to:getHandcardNum() < 3 and (to:hasSkill("nosrende") or (to:hasSkill("rende") and not to:hasUsed("RendeCard")))) then
 		return
 	end

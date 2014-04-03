@@ -342,12 +342,12 @@ public:
 class KOFLiegong: public TriggerSkill {
 public:
     KOFLiegong(): TriggerSkill("kofliegong") {
-        events << TargetConfirmed;
+        events << TargetSpecified;
     }
 
     virtual bool trigger(TriggerEvent, Room *room, ServerPlayer *player, QVariant &data) const{
         CardUseStruct use = data.value<CardUseStruct>();
-        if (player != use.from || player->getPhase() != Player::Play || !use.card->isKindOf("Slash"))
+        if (player->getPhase() != Player::Play || !use.card->isKindOf("Slash"))
             return false;
         QVariantList jink_list = player->tag["Jink_" + use.card->toString()].toList();
         int index = 0;
@@ -445,12 +445,9 @@ public:
                     log.arg = objectName();
                     room->sendLog(log);
                     if (choice == "draw")
-                        sunshangxiang->drawCards(2);
-                    else {
-                        RecoverStruct recover;
-                        recover.who = sunshangxiang;
-                        room->recover(sunshangxiang, recover);
-                    }
+                        sunshangxiang->drawCards(2, objectName());
+                    else
+                        room->recover(sunshangxiang, RecoverStruct(sunshangxiang));
                 }
             }
         }
@@ -720,10 +717,7 @@ public:
             room->judge(judge);
             if (judge.isGood() && player->isWounded()) {
                 room->broadcastSkillInvoke("kuanggu");
-
-                RecoverStruct recover;
-                recover.who = player;
-                room->recover(player, recover);
+                room->recover(player, RecoverStruct(player));
             }
         }
 
@@ -775,7 +769,7 @@ public:
         CardUseStruct use = data.value<CardUseStruct>();
         if (use.card->isKindOf("Slash") && use.to.contains(player)
             && room->askForSkillInvoke(player, objectName(), data))
-            player->drawCards(1);
+            player->drawCards(1, objectName());
         return false;
     }
 };
@@ -789,13 +783,17 @@ bool PujiCard::targetFilter(const QList<const Player *> &targets, const Player *
 
 void PujiCard::onEffect(const CardEffectStruct &effect) const{
     Room *room = effect.from->getRoom();
-    int id = room->askForCardChosen(effect.from, effect.to, "he", "puji", false, Card::MethodDiscard);
-    room->throwCard(id, effect.to, effect.from);
+    bool spade = false;
+    if (effect.from->canDiscard(effect.to, "he")) {
+        int id = room->askForCardChosen(effect.from, effect.to, "he", "puji", false, Card::MethodDiscard);
+        room->throwCard(id, effect.to, effect.from);
+        spade = (Sanguosha->getCard(id)->getSuit() == Card::Spade);
+    }
 
-    if (effect.from->isAlive() && this->getSuit() == Card::Spade)
-        effect.from->drawCards(1);
-    if (effect.to->isAlive() && Sanguosha->getCard(id)->getSuit() == Card::Spade)
-        effect.to->drawCards(1);
+    if (effect.from->isAlive() && Sanguosha->getCard(getEffectiveId())->getSuit() == Card::Spade)
+        effect.from->drawCards(1, "puji");
+    if (effect.to->isAlive() && spade)
+        effect.to->drawCards(1, "puji");
 }
 
 class Puji: public OneCardViewAsSkill {
@@ -949,7 +947,8 @@ public:
 class NiluanRecord: public TriggerSkill {
 public:
     NiluanRecord(): TriggerSkill("#niluan-record") {
-        events << TargetConfirmed << EventPhaseStart;
+        events << TargetSpecified << EventPhaseStart;
+        global = true;
     }
 
     virtual int getPriority(TriggerEvent) const{
@@ -961,9 +960,9 @@ public:
     }
 
     virtual bool trigger(TriggerEvent triggerEvent, Room *room, ServerPlayer *player, QVariant &data) const{
-        if (triggerEvent == TargetConfirmed) {
+        if (triggerEvent == TargetSpecified) {
             CardUseStruct use = data.value<CardUseStruct>();
-            if (use.from && use.from == player && use.card->isKindOf("Slash")) {
+            if (use.card->isKindOf("Slash")) {
                 foreach (ServerPlayer *to, use.to) {
                     if (!to->hasFlag("NiluanSlashTarget"))
                         to->setFlags("NiluanSlashTarget");
@@ -1056,7 +1055,7 @@ Special1v1Package::Special1v1Package()
     related_skills.insertMulti("shenju", "#shenju");
 
     General *kof_daqiao = new General(this, "kof_daqiao", "wu", 3, false);
-    kof_daqiao->addSkill("guose");
+    kof_daqiao->addSkill("nosguose");
     kof_daqiao->addSkill(new Wanrong);
 
     General *kof_sunshangxiang = new General(this, "kof_sunshangxiang", "wu", 3, false);

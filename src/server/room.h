@@ -83,11 +83,9 @@ public:
     void clearCardFlag(int card_id, ServerPlayer *who = NULL);
     bool useCard(const CardUseStruct &card_use, bool add_history = true);
     void damage(const DamageStruct &data);
-    void sendDamageLog(const DamageStruct &data);
     void loseHp(ServerPlayer *victim, int lose = 1);
     void loseMaxHp(ServerPlayer *victim, int lose = 1);
     bool changeMaxHpForAwakenSkill(ServerPlayer *player, int magnitude = -1);
-    void applyDamage(ServerPlayer *victim, const DamageStruct &damage);
     void recover(ServerPlayer *player, const RecoverStruct &recover, bool set_emotion = false);
     bool cardEffect(const Card *card, ServerPlayer *from, ServerPlayer *to, bool multiple = false);
     bool cardEffect(const CardEffectStruct &effect);
@@ -303,8 +301,6 @@ public:
                     const QString &pileName, const CardMoveReason &reason, bool forceMoveVisible = false);
     void moveCardsAtomic(QList<CardsMoveStruct> cards_move, bool forceMoveVisible);
     void moveCardsAtomic(CardsMoveStruct cards_move, bool forceMoveVisible);
-    void moveCards(CardsMoveStruct cards_move, bool forceMoveVisible, bool ignoreChanges = true);
-    void moveCards(QList<CardsMoveStruct> cards_moves, bool forceMoveVisible, bool ignoreChanges = true);
     QList<CardsMoveStruct> _breakDownCardMoves(QList<CardsMoveStruct> &cards_moves);
 
     // interactive methods
@@ -316,8 +312,8 @@ public:
     QString askForChoice(ServerPlayer *player, const QString &skill_name, const QString &choices, const QVariant &data = QVariant());
     bool askForDiscard(ServerPlayer *target, const QString &reason, int discard_num, int min_num,
                        bool optional = false, bool include_equip = false, const QString &prompt = QString());
-    const Card *askForExchange(ServerPlayer *player, const QString &reason, int discard_num, bool include_equip = false,
-                               const QString &prompt = QString(), bool optional = false);
+    const Card *askForExchange(ServerPlayer *player, const QString &reason, int discard_num, int min_num,
+                               bool include_equip = false, const QString &prompt = QString(), bool optional = false);
     bool askForNullification(const Card *trick, ServerPlayer *from, ServerPlayer *to, bool positive);
     bool isCanceled(const CardEffectStruct &effect);
     int askForCardChosen(ServerPlayer *player, ServerPlayer *who, const QString &flags, const QString &reason,
@@ -446,7 +442,6 @@ private:
     void _fillMoveInfo(CardsMoveStruct &moves, int card_index) const;
     QList<CardsMoveOneTimeStruct> _mergeMoves(QList<CardsMoveStruct> cards_moves);
     QList<CardsMoveStruct> _separateMoves(QList<CardsMoveOneTimeStruct> moveOneTimes);
-    void _moveCards(QList<CardsMoveStruct> cards_moves, bool forceMoveVisible, bool ignoreChanges);
     QString _chooseDefaultGeneral(ServerPlayer *player) const;
     bool _setPlayerGeneral(ServerPlayer *player, const QString &generalName, bool isFirst);
     QString mode;

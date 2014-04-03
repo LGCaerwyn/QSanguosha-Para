@@ -53,7 +53,7 @@ public:
             else
                 room->broadcastSkillInvoke("jilve", 2);
 
-            to->drawCards(caopi->getLostHp());
+            to->drawCards(caopi->getLostHp(), objectName());
             to->turnOver();
         }
     }
@@ -92,7 +92,7 @@ public:
                     log.arg = objectName();
                     room->sendLog(log);
 
-                    caopi->drawCards(1);
+                    caopi->drawCards(1, objectName());
                     caopis.removeOne(caopi);
                 } else
                     break;
@@ -166,7 +166,7 @@ private:
 class Huoshou: public TriggerSkill {
 public:
     Huoshou(): TriggerSkill("huoshou") {
-        events << TargetConfirmed << ConfirmDamage << CardFinished;
+        events << TargetSpecified << ConfirmDamage;
         frequency = Compulsory;
     }
 
@@ -175,25 +175,38 @@ public:
     }
 
     virtual bool trigger(TriggerEvent triggerEvent, Room *room, ServerPlayer *player, QVariant &data) const{
-        if (triggerEvent == TargetConfirmed && TriggerSkill::triggerable(player)) {
+        if (triggerEvent == TargetSpecified) {
             CardUseStruct use = data.value<CardUseStruct>();
-            if (use.card->isKindOf("SavageAssault") && use.from != player) {
-                room->notifySkillInvoked(player, objectName());
-                room->broadcastSkillInvoke(objectName());
-                room->setTag("HuoshouSource", QVariant::fromValue((PlayerStar)player));
+            if (use.card->isKindOf("SavageAssault")) {
+                ServerPlayer *menghuo = room->findPlayerBySkillName(objectName());
+                if (menghuo && menghuo != use.from) {
+                    LogMessage log;
+                    log.type = "#TriggerSkill";
+                    log.from = menghuo;
+                    log.arg = objectName();
+                    room->sendLog(log);
+
+                    room->notifySkillInvoked(player, objectName());
+                    room->broadcastSkillInvoke(objectName());
+
+                    use.card->setFlags("HuoshouDamage_" + menghuo->objectName());
+                }
             }
-        } else if (triggerEvent == ConfirmDamage && !room->getTag("HuoshouSource").isNull()) {
+        } else if (triggerEvent == ConfirmDamage) {
             DamageStruct damage = data.value<DamageStruct>();
             if (!damage.card || !damage.card->isKindOf("SavageAssault"))
                 return false;
 
-            ServerPlayer *menghuo = room->getTag("HuoshouSource").value<PlayerStar>();
+            ServerPlayer *menghuo = NULL;
+            foreach (ServerPlayer *p, room->getAllPlayers()) {
+                if (damage.card->hasFlag("HuoshouDamage_" + p->objectName())) {
+                    menghuo = p;
+                    break;
+                }
+            }
+            if (!menghuo) return false;
             damage.from = menghuo->isAlive() ? menghuo : NULL;
             data = QVariant::fromValue(damage);
-        } else if (triggerEvent == CardFinished) {
-            CardUseStruct use = data.value<CardUseStruct>();
-            if (use.card->isKindOf("SavageAssault"))
-                room->removeTag("HuoshouSource");
         }
 
         return false;
@@ -259,13 +272,9 @@ public:
                         card_to_gotback << ids[i];
                 }
                 if (!card_to_throw.isEmpty()) {
+                    room->recover(menghuo, RecoverStruct(menghuo, NULL, card_to_throw.length()));
+
                     DummyCard *dummy = new DummyCard(card_to_throw);
-
-                    RecoverStruct recover;
-                    recover.who = menghuo;
-                    recover.recover = card_to_throw.length();
-                    room->recover(menghuo, recover);
-
                     CardMoveReason reason(CardMoveReason::S_REASON_NATURAL_ENTER, menghuo->objectName(), "zaiqi", QString());
                     room->throwCard(dummy, reason, NULL);
                     delete dummy;
@@ -273,8 +282,7 @@ public:
                 }
                 if (!card_to_gotback.isEmpty()) {
                     DummyCard *dummy2 = new DummyCard(card_to_gotback);
-                    CardMoveReason reason(CardMoveReason::S_REASON_GOTBACK, menghuo->objectName());
-                    room->obtainCard(menghuo, dummy2, reason);
+                    room->obtainCard(menghuo, dummy2);
                     delete dummy2;
                 }
 
@@ -359,7 +367,7 @@ public:
             if (x == 1) {
                 room->broadcastSkillInvoke(objectName(), index);
 
-                to->drawCards(1);
+                to->drawCards(1, objectName());
                 room->askForDiscard(to, objectName(), 1, 1, false, true);
             } else {
                 to->setFlags("YinghunTarget");
@@ -368,12 +376,12 @@ public:
                 if (choice == "d1tx") {
                     room->broadcastSkillInvoke(objectName(), index + 1);
 
-                    to->drawCards(1);
+                    to->drawCards(1, objectName());
                     room->askForDiscard(to, objectName(), x, x, false, true);
                 } else {
                     room->broadcastSkillInvoke(objectName(), index);
 
-                    to->drawCards(x);
+                    to->drawCards(x, objectName());
                     room->askForDiscard(to, objectName(), 1, 1, false, true);
                 }
             }
@@ -531,7 +539,7 @@ void DimengCard::use(Room *room, ServerPlayer *, QList<ServerPlayer *> &targets)
                               CardMoveReason(CardMoveReason::S_REASON_SWAP, b->objectName(), a->objectName(), "dimeng", QString()));
         exchangeMove.push_back(move1);
         exchangeMove.push_back(move2);
-        room->moveCards(exchangeMove, false);
+        room->moveCardsAtomic(exchangeMove, false);
 
         LogMessage log;
         log.type = "#Dimeng";
@@ -716,21 +724,21 @@ public:
 class Roulin: public TriggerSkill {
 public:
     Roulin(): TriggerSkill("roulin") {
-        events << TargetConfirmed;
+        events << TargetConfirmed << TargetSpecified;
         frequency = Compulsory;
     }
 
     virtual bool triggerable(const ServerPlayer *target) const{
-        return target != NULL && (target->hasSkill(objectName()) || target->isFemale());
+        return target != NULL;
     }
 
-    virtual bool trigger(TriggerEvent, Room *room, ServerPlayer *player, QVariant &data) const{
+    virtual bool trigger(TriggerEvent triggerEvent, Room *room, ServerPlayer *player, QVariant &data) const{
         CardUseStruct use = data.value<CardUseStruct>();
-        if (use.card->isKindOf("Slash") && player == use.from) {
+        if (use.card->isKindOf("Slash")) {
             QVariantList jink_list = use.from->tag["Jink_" + use.card->toString()].toList();
             int index = 0;
             bool play_effect = false;
-            if (TriggerSkill::triggerable(use.from)) {
+            if (triggerEvent == TargetSpecified && TriggerSkill::triggerable(use.from)) {
                 foreach (ServerPlayer *p, use.to) {
                     if (p->isFemale()) {
                         play_effect = true;
@@ -750,7 +758,7 @@ public:
 
                     room->broadcastSkillInvoke(objectName(), 1);
                 }
-            } else if (use.from->isFemale()) {
+            } else if (triggerEvent == TargetConfirmed && use.from->isFemale()) {
                 foreach (ServerPlayer *p, use.to) {
                     if (p->hasSkill(objectName())) {
                         play_effect = true;
@@ -825,6 +833,7 @@ class Baonue: public TriggerSkill {
 public:
     Baonue(): TriggerSkill("baonue$") {
         events << Damage << PreDamageDone;
+        global = true;
     }
 
     virtual bool triggerable(const ServerPlayer *target) const{
@@ -865,10 +874,7 @@ public:
 
                     if (judge.isGood()) {
                         room->broadcastSkillInvoke(objectName());
-
-                        RecoverStruct recover;
-                        recover.who = player;
-                        room->recover(dongzhuo, recover);
+                        room->recover(dongzhuo, RecoverStruct(player));
                     }
                 } else
                     break;
