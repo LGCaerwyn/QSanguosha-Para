@@ -151,14 +151,14 @@ sgs.ai_skill_use_func.QiangxiCard = function(card, use, self)
 		self.equipsToDec = hand_weapon and 0 or 1
 		for _, enemy in ipairs(self.enemies) do
 			if self:objectiveLevel(enemy) > 3 and not self:cantbeHurt(enemy) and self:damageIsEffective(enemy) then
-				if hand_weapon and self.player:distanceTo(enemy) <= self.player:getAttackRange() then
+				if hand_weapon and self.player:inMyAttackRange(enemy) then
 					use.card = sgs.Card_Parse("@QiangxiCard=" .. hand_weapon:getId())
 					if use.to then
 						use.to:append(enemy)
 					end
 					break
 				end
-				if self.player:distanceTo(enemy) <= 1 then
+				if self.player:distanceTo(enemy) <= self.player:getAttackRange(false) then
 					use.card = sgs.Card_Parse("@QiangxiCard=" .. weapon:getId())
 					if use.to then
 						use.to:append(enemy)
@@ -172,7 +172,7 @@ sgs.ai_skill_use_func.QiangxiCard = function(card, use, self)
 		self:sort(self.enemies, "hp")
 		for _, enemy in ipairs(self.enemies) do
 			if self:objectiveLevel(enemy) > 3 and not self:cantbeHurt(enemy) and self:damageIsEffective(enemy) then
-				if self.player:distanceTo(enemy) <= self.player:getAttackRange() and self.player:getHp() > enemy:getHp() and self.player:getHp() > 2 then
+				if self.player:inMyAttackRange(enemy) and self.player:getHp() > enemy:getHp() and self.player:getHp() > 2 then
 					use.card = sgs.Card_Parse("@QiangxiCard=.")
 					if use.to then
 						use.to:append(enemy)
@@ -339,7 +339,16 @@ end
 
 sgs.ai_skill_use_func.TianyiCard = function(card, use, self)
 	self:sort(self.enemies, "handcard")
-	local max_card = self:getMaxCard()
+	local cards = {}
+	local peach = 0
+	for _, c in sgs.qlist(self.player:getHandcards()) do
+		if isCard("Peach", c, self.player) and peach < 2 then
+			peach = peach + 1
+		else
+			table.insert(cards, c)
+		end
+	end
+	local max_card = self:getMaxCard(self.player, cards)
 	if not max_card then return end
 	local max_point = max_card:getNumber()
 	if self.player:hasSkill("yingyang") then max_point = math.min(max_point + 3, 13) end
@@ -431,7 +440,6 @@ sgs.ai_skill_use_func.TianyiCard = function(card, use, self)
 		end
 	end
 
-	local cards = sgs.QList2Table(self.player:getHandcards())
 	self:sortByUseValue(cards, true)
 	if zhugeliang and self:isFriend(zhugeliang) and zhugeliang:getHandcardNum() == 1
 		and zhugeliang:objectName() ~= self.player:objectName() and self:getEnemyNumBySeat(self.player, zhugeliang) >= 1 then

@@ -64,7 +64,8 @@ void Settings::init() {
     if (banpackagelist.isEmpty()) {
         banpackagelist << "ling" << "nostalgia"
                        << "nostal_standard" << "nostal_general" << "nostal_wind"
-                       << "nostal_yjcm" << "nostal_yjcm2012"
+                       << "nostal_yjcm" << "nostal_yjcm2012" << "nostal_yjcm2013"
+                       << "Special3v3" << "Special1v1"
                        << "test" << "GreenHand" << "dragon"
                        << "sp_cards" << "GreenHandCard"
                        << "New3v3Card" << "New3v3_2013Card" << "New1v1Card";

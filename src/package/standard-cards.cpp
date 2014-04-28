@@ -11,14 +11,7 @@ Slash::Slash(Suit suit, int number): BasicCard(suit, number)
     setObjectName("slash");
     nature = DamageStruct::Normal;
     drank = 0;
-}
-
-DamageStruct::Nature Slash::getNature() const{
-    return nature;
-}
-
-void Slash::setNature(DamageStruct::Nature nature) {
-    this->nature = nature;
+    specific_assignee = QStringList();
 }
 
 bool Slash::IsAvailable(const Player *player, const Card *slash, bool considerSpecificAssignee) {
@@ -70,6 +63,10 @@ bool Slash::IsSpecificAssignee(const Player *player, const Player *from, const C
              && !Slash::IsAvailable(from, slash, false)) {
         QStringList assignee_list = from->property("extra_slash_specific_assignee").toString().split("+");
         if (assignee_list.contains(player->objectName())) return true;
+    } else {
+        const Slash *s = qobject_cast<const Slash *>(slash);
+        if (s && s->hasSpecificAssignee(player))
+            return true;
     }
     return false;
 }
@@ -205,8 +202,7 @@ void Slash::onUse(Room *room, const CardUseStruct &card_use) const{
             rangefix += 1;
     }
     foreach (ServerPlayer *p, use.to) {
-        if (p->hasSkill("tongji") && p->getHandcardNum() > p->getHp()
-            && use.from->distanceTo(p, rangefix) <= use.from->getAttackRange()) {
+        if (p->hasSkill("tongji") && p->getHandcardNum() > p->getHp() && use.from->inMyAttackRange(p, rangefix)) {
             room->broadcastSkillInvoke("tongji");
             room->notifySkillInvoked(p, "tongji");
             break;
@@ -477,12 +473,11 @@ public:
         int weapon_id = player->getWeapon()->getId();
         room->setCardFlag(weapon_id, "using");
         effect.from->setFlags("BladeUse");
-        if (!room->askForUseSlashTo(effect.from, effect.to, QString("blade-slash:%1").arg(effect.to->objectName()), false, true))
-            effect.from->setFlags("-BladeUse");
-
+        bool use = room->askForUseSlashTo(effect.from, effect.to, QString("blade-slash:%1").arg(effect.to->objectName()), false, true);
+        if (!use) effect.from->setFlags("-BladeUse");
         room->setCardFlag(weapon_id, "-using");
 
-        return false;
+        return use;
     }
 };
 

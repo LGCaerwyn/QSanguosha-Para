@@ -119,7 +119,7 @@ public:
     void setPhase(Phase phase);
 
     int getAttackRange(bool include_weapon = true) const;
-    bool inMyAttackRange(const Player *other) const;
+    bool inMyAttackRange(const Player *other, int distance_fix = 0) const;
 
     bool isAlive() const;
     bool isDead() const;
@@ -218,7 +218,7 @@ public:
     QList<const Skill *> getSkillList(bool include_equip = false, bool visible_only = true) const;
     QSet<const Skill *> getVisibleSkills(bool include_equip = false) const;
     QList<const Skill *> getVisibleSkillList(bool include_equip = false) const;
-    QSet<QString> getAcquiredSkills() const;
+    QStringList getAcquiredSkills() const;
     QString getSkillDescription() const;
 
     virtual bool isProhibited(const Player *to, const Card *card, const QList<const Player *> &others = QList<const Player *>()) const;
@@ -281,7 +281,7 @@ public:
     void clearPrivatePiles();
     void drawCards(int n, const char *reason = NULL);
     bool askForSkillInvoke(const char *skill_name, const QVariant &data = QVariant());
-    QList<int> forceToDiscard(int discard_num, bool include_equip, bool is_discard = true);
+    QList<int> forceToDiscard(int discard_num, bool include_equip, bool is_discard = true, const char *pattern = ".");
     QList<int> handCards() const;
     virtual QList<const Card *> getHandcards() const;
     QList<const Card *> getCards(const char *flags) const;
@@ -1166,9 +1166,9 @@ public:
     bool askForSkillInvoke(ServerPlayer *player, const char *skill_name, const QVariant &data = QVariant());
     QString askForChoice(ServerPlayer *player, const char *skill_name, const char *choices, const QVariant &data = QVariant());
     bool askForDiscard(ServerPlayer *target, const char *reason, int discard_num, int min_num,
-                       bool optional = false, bool include_equip = false, const char *prompt = NULL);
+                       bool optional = false, bool include_equip = false, const char *prompt = NULL, const char *pattern = ".");
     const Card *askForExchange(ServerPlayer *player, const char *reason, int discard_num, int min_num,
-                               bool include_equip = false, const char *prompt = NULL, bool optional = false);
+                               bool include_equip = false, const char *prompt = NULL, bool optional = false, const char *pattern = ".");
     bool askForNullification(const Card *trick, ServerPlayer *from, ServerPlayer *to, bool positive);
     bool isCanceled(const CardEffectStruct &effect);
     int askForCardChosen(ServerPlayer *player, ServerPlayer *who, const char *flags, const char *reason,

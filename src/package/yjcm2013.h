@@ -11,15 +11,6 @@ public:
     YJCM2013Package();
 };
 
-class RenxinCard: public SkillCard {
-    Q_OBJECT
-
-public:
-    Q_INVOKABLE RenxinCard();
-
-    virtual void use(Room *room, ServerPlayer *source, QList<ServerPlayer *> &targets) const;
-};
-
 class JunxingCard: public SkillCard {
     Q_OBJECT
 
@@ -64,7 +55,9 @@ class XiansiSlashCard: public SkillCard {
 public:
     Q_INVOKABLE XiansiSlashCard();
 
-    virtual void use(Room *room, ServerPlayer *source, QList<ServerPlayer *> &targets) const;
+    virtual bool targetsFeasible(const QList<const Player *> &targets, const Player *Self) const;
+    virtual bool targetFilter(const QList<const Player *> &targets, const Player *to_select, const Player *Self) const;
+    virtual const Card *validate(CardUseStruct &cardUse) const;
 };
 
 class ZongxuanCard: public SkillCard {
@@ -76,6 +69,16 @@ public:
     virtual void use(Room *room, ServerPlayer *source, QList<ServerPlayer *> &targets) const;
 };
 
+class MiejiCard: public SkillCard {
+    Q_OBJECT
+
+public:
+    Q_INVOKABLE MiejiCard();
+
+    virtual bool targetFilter(const QList<const Player *> &targets, const Player *to_select, const Player *Self) const;
+    virtual void onEffect(const CardEffectStruct &effect) const;
+};
+
 class FenchengCard: public SkillCard {
     Q_OBJECT
 
@@ -84,6 +87,28 @@ public:
 
     virtual void use(Room *room, ServerPlayer *source, QList<ServerPlayer *> &targets) const;
     virtual void onEffect(const CardEffectStruct &effect) const;
+};
+
+class DanshouCard: public SkillCard {
+    Q_OBJECT
+
+public:
+    Q_INVOKABLE DanshouCard();
+
+    virtual bool targetFilter(const QList<const Player *> &targets, const Player *to_select, const Player *Self) const;
+    virtual void onEffect(const CardEffectStruct &effect) const;
+};
+
+#include "skill.h"
+class Chengxiang: public MasochismSkill {
+    Q_OBJECT
+
+public:
+    Chengxiang();
+    virtual void onDamaged(ServerPlayer *target, const DamageStruct &damage) const;
+
+protected:
+    int total_point;
 };
 
 #endif

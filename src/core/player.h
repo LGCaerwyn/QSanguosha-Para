@@ -105,7 +105,7 @@ public:
     void setPhase(Phase phase);
 
     int getAttackRange(bool include_weapon = true) const;
-    bool inMyAttackRange(const Player *other) const;
+    bool inMyAttackRange(const Player *other, int distance_fix = 0) const;
 
     bool isAlive() const;
     bool isDead() const;
@@ -206,7 +206,7 @@ public:
     QList<const Skill *> getSkillList(bool include_equip = false, bool visible_only = true) const;
     QSet<const Skill *> getVisibleSkills(bool include_equip = false) const;
     QList<const Skill *> getVisibleSkillList(bool include_equip = false) const;
-    QSet<QString> getAcquiredSkills() const;
+    QStringList getAcquiredSkills() const;
     QString getSkillDescription() const;
 
     virtual bool isProhibited(const Player *to, const Card *card, const QList<const Player *> &others = QList<const Player *>()) const;
@@ -236,10 +236,10 @@ protected:
     QMap<QString, int> marks;
     QMap<QString, QList<int> > piles;
     QMap<QString, QStringList> pile_open;
-    QSet<QString> acquired_skills;
+    QStringList acquired_skills;
     QStringList skills;
-    QSet<QString> flags;
     QHash<QString, int> history;
+    QSet<QString> flags;
 
 private:
     QString screen_name;

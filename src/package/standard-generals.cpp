@@ -21,8 +21,23 @@ public:
         choices << "draw" << "cancel";
 
         const Card *card = damage.card;
-        if (card && room->getCardPlace(card->getEffectiveId()) == Player::PlaceTable)
-            choices.prepend("obtain");
+        if (card) {
+            QList<int> ids;
+            if (card->isVirtualCard())
+                ids = card->getSubcards();
+            else
+                ids << card->getEffectiveId();
+            if (ids.length() > 0) {
+                bool all_place_table = true;
+                foreach (int id, ids) {
+                    if (room->getCardPlace(id) != Player::PlaceTable) {
+                        all_place_table = false;
+                        break;
+                    }
+                }
+                if (all_place_table) choices.append("obtain");
+            }
+        }
 
         QString choice = room->askForChoice(caocao, objectName(), choices.join("+"), data);
         if (choice != "cancel") {
@@ -1472,7 +1487,7 @@ public:
 
         room->broadcastSkillInvoke(objectName());
         room->notifySkillInvoked(lvmeng, objectName());
-        //room->doLightbox("$QinxueAnimate");
+        room->doLightbox("$QinxueAnimate");
 
         LogMessage log;
         log.type = "#QinxueWake";
@@ -1742,6 +1757,8 @@ public:
                     foreach (ServerPlayer *p, players) {
                         if (p->hasFlag("LiuliTarget")) {
                             p->setFlags("-LiuliTarget");
+                            if (!use.from->canSlash(p, false))
+                                return false;
                             use.to.removeOne(daqiao);
                             use.to.append(p);
                             room->sortByActionOrder(use.to);
@@ -2225,7 +2242,7 @@ public:
             // find yuanshu
             foreach (const Player *p, from->getAliveSiblings()) {
                 if (p->hasSkill(objectName()) && p != to && p->getHandcardNum() > p->getHp()
-                    && from->distanceTo(p, rangefix) <= from->getAttackRange()) {
+                    && from->inMyAttackRange(p, rangefix)) {
                     return true;
                 }
             }

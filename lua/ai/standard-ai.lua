@@ -618,7 +618,7 @@ function SmartAI:willSkipPlayPhase(player, no_null)
 	local player = player or self.player
 	if player:isSkipped(sgs.Player_Play) then return true end
 
-	local fuhuanghou = self.room:findPlayerBySkillName("zhuikong")
+	local fuhuanghou = self.room:findPlayerBySkillName("noszhuikong")
 	if fuhuanghou and fuhuanghou:objectName() ~= player:objectName() and self:isEnemy(player, fuhuanghou)
 		and fuhuanghou:isWounded() and fuhuanghou:getHandcardNum() > 1 and not player:isKongcheng() and not self:isWeak(fuhuanghou) then
 		local max_card = self:getMaxCard(fuhuanghou)
@@ -1647,7 +1647,7 @@ sgs.ai_skill_use_func.ZhihengCard = function(card, use, self)
 					if keep_weapon and zcard:getEffectiveId() == keep_weapon:getEffectiveId() then shouldUse = false end
 				end
 				if self.player:hasEquip(zcard) and zcard:isKindOf("Armor") and not self:needToThrowArmor() then shouldUse = false end
-				if self.player:hasTreasure(zcard) then shouldUse = false end
+				if self.player:hasTreasure(zcard:objectName()) then shouldUse = false end
 				if isCard("Jink", zcard, self.player) and not keep_jink then
 					keep_jink = true
 					shouldUse = false

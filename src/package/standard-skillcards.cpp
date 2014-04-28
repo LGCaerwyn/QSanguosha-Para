@@ -286,7 +286,7 @@ bool LiuliCard::targetFilter(const QList<const Player *> &targets, const Player 
         range_fix += 1;
     }
 
-    return Self->distanceTo(to_select, range_fix) <= Self->getAttackRange();
+    return Self->inMyAttackRange(to_select, range_fix);
 }
 
 void LiuliCard::onEffect(const CardEffectStruct &effect) const{
@@ -433,7 +433,16 @@ const Card *JijiangCard::validate(CardUseStruct &cardUse) const{
             foreach (ServerPlayer *target, targets)
                 target->setFlags("-JijiangTarget");
 
-            return slash;
+            foreach (ServerPlayer *target, targets) {
+                if (!liubei->canSlash(target, slash))
+                    cardUse.to.removeOne(target);
+            }
+            if (cardUse.to.length() > 0)
+                return slash;
+            else {
+                delete slash;
+                return NULL;
+            }
         }
     }
     foreach (ServerPlayer *target, targets)

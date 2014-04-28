@@ -551,7 +551,7 @@ TiaoxinCard::TiaoxinCard() {
 }
 
 bool TiaoxinCard::targetFilter(const QList<const Player *> &targets, const Player *to_select, const Player *Self) const{
-    return targets.isEmpty() && to_select->inMyAttackRange(Self) && to_select != Self;
+    return targets.isEmpty() && to_select->inMyAttackRange(Self);
 }
 
 void TiaoxinCard::onEffect(const CardEffectStruct &effect) const{
@@ -688,11 +688,13 @@ public:
             QVariantList guzhengOther = player->tag["GuzhengOther"].toList();
 
             if ((move.reason.m_reason & CardMoveReason::S_MASK_BASIC_REASON) == CardMoveReason::S_REASON_DISCARD) {
+                int i = 0;
                 foreach (int card_id, move.card_ids) {
-                    if (move.from == current)
+                    if (move.from == current && move.from_places[i] == Player::PlaceHand)
                         guzhengToGet << card_id;
                     else if (!guzhengToGet.contains(card_id))
                         guzhengOther << card_id;
+                    i++;
                 }
             }
 
