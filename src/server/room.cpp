@@ -1230,7 +1230,7 @@ const Card *Room::askForCard(ServerPlayer *player, const QString &pattern, const
             LogMessage log;
             log.card_str = card->toString();
             log.from = player;
-            log.type = QString("#%1").arg(card->getClassName());
+            log.type = "#UseCard";
             if (method == Card::MethodResponse)
                 log.type += "_Resp";
             sendLog(log);
@@ -3560,7 +3560,6 @@ QList<CardsMoveOneTimeStruct> Room::_mergeMoves(QList<CardsMoveStruct> cards_mov
         moveOneTime.to_place = cls.m_to_place;
         moveOneTime.to_pile_name = cls.m_to_pile_name;
         moveOneTime.is_last_handcard = false;
-        moveOneTime.transit = false;
         foreach (CardsMoveStruct move, moveMap[cls]) {
             moveOneTime.card_ids.append(move.card_ids);
             for (int i = 0; i < move.card_ids.size(); i++) {
@@ -4416,8 +4415,17 @@ const Card *Room::askForExchange(ServerPlayer *player, const QString &reason, in
     notifyMoveFocus(player, S_COMMAND_EXCHANGE_CARD);
     min_num = qMin(min_num, discard_num);
 
-    AI *ai = player->getAI();
+    if (player->isNude()) return NULL;
+
+    if (player->getCardCount(include_equip) <= min_num) {
+        DummyCard *card = new DummyCard;
+        QString flag = include_equip ? "he" : "h";
+        card->addSubcards(player->getCards(flag));
+        return card;
+    }
+
     QList<int> to_exchange;
+    AI *ai = player->getAI();
     if (ai) {
         // share the same callback interface
         player->setFlags("Global_AIDiscardExchanging");
@@ -4430,6 +4438,7 @@ const Card *Room::askForExchange(ServerPlayer *player, const QString &reason, in
         exchange_str[2] = include_equip;
         exchange_str[3] = toJsonString(prompt);
         exchange_str[4] = optional;
+        exchange_str[5] = toJsonString(pattern);
 
         bool success = doRequest(player, S_COMMAND_EXCHANGE_CARD, exchange_str, true);
         //@todo: also check if the player does have that card!!!

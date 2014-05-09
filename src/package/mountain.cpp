@@ -115,7 +115,7 @@ public:
         return TriggerSkill::triggerable(target) && target->canDiscard(target, "h");
     }
 
-    virtual bool trigger(TriggerEvent , Room *room, ServerPlayer *zhanghe, QVariant &data) const{
+    virtual bool trigger(TriggerEvent, Room *room, ServerPlayer *zhanghe, QVariant &data) const{
         PhaseChangeStruct change = data.value<PhaseChangeStruct>();
         room->setPlayerMark(zhanghe, "qiaobianPhase", (int)change.to);
         int index = 0;
@@ -161,8 +161,8 @@ public:
             if (damage.card == NULL || !damage.card->isKindOf("Slash") || damage.to->isDead())
                 return false;
 
-            QList<ServerPlayer *> cais = room->findPlayersBySkillName(objectName());
-            foreach (ServerPlayer *caiwenji, cais) {
+            foreach (ServerPlayer *caiwenji, room->getAllPlayers()) {
+                if (!TriggerSkill::triggerable(caiwenji)) continue;
                 if (caiwenji->canDiscard(caiwenji, "he") && room->askForCard(caiwenji, "..", "@beige", data, objectName())) {
                     JudgeStruct judge;
                     judge.good = true;

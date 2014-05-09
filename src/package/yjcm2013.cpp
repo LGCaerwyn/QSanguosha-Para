@@ -97,13 +97,26 @@ public:
 class Jingce: public TriggerSkill {
 public:
     Jingce(): TriggerSkill("jingce") {
-        events << PreCardUsed << CardResponded << EventPhaseStart << EventPhaseEnd;
+        events << EventPhaseEnd;
         frequency = Frequent;
-        global = true;
     }
 
-    virtual bool triggerable(const ServerPlayer *target) const{
-        return target != NULL;
+    virtual bool trigger(TriggerEvent, Room *room, ServerPlayer *player, QVariant &) const{
+        if (player->getPhase() == Player::Play && player->getMark(objectName()) >= player->getHp()) {
+            if (room->askForSkillInvoke(player, objectName())) {
+                room->broadcastSkillInvoke(objectName());
+                player->drawCards(2, objectName());
+            }
+        }
+        return false;
+    }
+};
+
+class JingceRecord: public TriggerSkill {
+public:
+    JingceRecord(): TriggerSkill("#jingce-record") {
+        events << PreCardUsed << CardResponded << EventPhaseStart;
+        global = true;
     }
 
     virtual bool trigger(TriggerEvent triggerEvent, Room *room, ServerPlayer *player, QVariant &data) const{
@@ -116,17 +129,10 @@ public:
                 if (response.m_isUse)
                    card = response.m_card;
             }
-            if (card && card->getHandlingMethod() == Card::MethodUse)
-                player->addMark(objectName());
+            if (card && card->getTypeId() != Card::TypeSkill)
+                player->addMark("jingce");
         } else if (triggerEvent == EventPhaseStart && player->getPhase() == Player::RoundStart) {
-                player->setMark(objectName(), 0);
-        } else if (triggerEvent == EventPhaseEnd && TriggerSkill::triggerable(player)) {
-            if (player->getPhase() == Player::Play && player->getMark(objectName()) >= player->getHp()) {
-                if (room->askForSkillInvoke(player, objectName())) {
-                    room->broadcastSkillInvoke(objectName());
-                    player->drawCards(2, objectName());
-                }
-            }
+            player->setMark("jingce", 0);
         }
         return false;
     }
@@ -414,8 +420,8 @@ public:
                 log.type = "#QiaoshuiAdd";
                 log.from = jianyong;
                 log.to << extra;
-                log.arg = use.card->objectName();
-                log.arg2 = "qiaoshui";
+                log.card_str = use.card->toString();
+                log.arg = "qiaoshui";
                 room->sendLog(log);
                 room->doAnimate(QSanProtocol::S_ANIMATE_INDICATE, jianyong->objectName(), extra->objectName());
 
@@ -438,8 +444,8 @@ public:
                 log.type = "#QiaoshuiRemove";
                 log.from = jianyong;
                 log.to << removed;
-                log.arg = use.card->objectName();
-                log.arg2 = "qiaoshui";
+                log.card_str = use.card->toString();
+                log.arg = "qiaoshui";
                 room->sendLog(log);
             }
         }
@@ -795,7 +801,7 @@ public:
         view_as_skill = new ZongxuanViewAsSkill;
     }
 
-    virtual bool trigger(TriggerEvent , Room *room, ServerPlayer *player, QVariant &data) const{
+    virtual bool trigger(TriggerEvent, Room *room, ServerPlayer *player, QVariant &data) const{
         CardsMoveOneTimeStruct move = data.value<CardsMoveOneTimeStruct>();
         if (move.from != player)
             return false;
@@ -827,11 +833,10 @@ public:
                         zongxuan_card.removeOne(id);
                         zongxuan.removeOne(QString::number(id));
                         room->setPlayerProperty(player, "zongxuan", zongxuan.join("+"));
-                        if (move.card_ids.contains(id)) {
-                            move.from_places.removeAt(move.card_ids.indexOf(id));
-                            move.card_ids.removeOne(id);
-                            data = QVariant::fromValue(move);
-                        }
+                        QList<int> _id;
+                        _id << id;
+                        move.removeCardIds(_id);
+                        data = QVariant::fromValue(move);
                         room->setPlayerProperty(player, "zongxuan_move", QString::number(id)); // For UI to translate the move reason
                         room->moveCardTo(Sanguosha->getCard(id), player, NULL, Player::DrawPile, move.reason, true);
                         if (!player->isAlive())
@@ -1130,8 +1135,9 @@ public:
         if (player->getPhase() != Player::RoundStart || player->isKongcheng())
             return false;
 
-        foreach (ServerPlayer *fuhuanghou, room->findPlayersBySkillName(objectName())) {
-            if (player != fuhuanghou && fuhuanghou->isWounded() && !fuhuanghou->isKongcheng()
+        foreach (ServerPlayer *fuhuanghou, room->getAllPlayers()) {
+            if (TriggerSkill::triggerable(fuhuanghou)
+                && player != fuhuanghou && fuhuanghou->isWounded() && !fuhuanghou->isKongcheng()
                 && room->askForSkillInvoke(fuhuanghou, objectName())) {
                 room->broadcastSkillInvoke("zhuikong");
                 if (fuhuanghou->pindian(player, objectName(), NULL)) {
@@ -1213,6 +1219,14 @@ public:
                 CardMoveReason reason(CardMoveReason::S_REASON_GIVE, target->objectName(), player->objectName(), "nosqiuyuan", QString());
                 if (!card) {
                     if (use.from->canSlash(target, use.card, false)) {
+                        LogMessage log;
+                        log.type = "#BecomeTarget";
+                        log.from = target;
+                        log.card_str = use.card->toString();
+                        room->sendLog(log);
+
+                        room->doAnimate(QSanProtocol::S_ANIMATE_INDICATE, player->objectName(), target->objectName());
+
                         use.to.append(target);
                         room->sortByActionOrder(use.to);
                         data = QVariant::fromValue(use);
@@ -1244,6 +1258,8 @@ YJCM2013Package::YJCM2013Package()
 
     General *guohuai = new General(this, "guohuai", "wei"); // YJ 203
     guohuai->addSkill(new Jingce);
+    guohuai->addSkill(new JingceRecord);
+    related_skills.insertMulti("jingce", "#jingce-record");
 
     General *guanping = new General(this, "guanping", "shu", 4); // YJ 204
     guanping->addSkill(new Longyin);

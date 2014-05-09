@@ -1231,16 +1231,12 @@ public:
 class ZhuhaiRecord: public TriggerSkill {
 public:
     ZhuhaiRecord(): TriggerSkill("#zhuhai-record") {
-        events << DamageDone;
+        events << PreDamageDone;
         global = true;
     }
 
     virtual int getPriority(TriggerEvent) const{
         return 4;
-    }
-
-    virtual bool triggerable(const ServerPlayer *target) const{
-        return target != NULL;
     }
 
     virtual bool trigger(TriggerEvent, Room *, ServerPlayer *, QVariant &data) const{
@@ -1433,15 +1429,16 @@ public:
         global = true;
     }
 
-    virtual bool triggerable(const ServerPlayer *target) const{
-        return target != NULL;
-    }
-
     virtual bool trigger(TriggerEvent triggerEvent, Room *room, ServerPlayer *lvmeng, QVariant &data) const{
         if (triggerEvent == EventPhaseChanging) {
+            bool can_trigger = true;
+            if (lvmeng->hasFlag("KejiSlashInPlayPhase")) {
+                can_trigger = false;
+                lvmeng->setFlags("-KejiSlashInPlayPhase");
+            }
             PhaseChangeStruct change = data.value<PhaseChangeStruct>();
-            if (change.to == Player::Discard && TriggerSkill::triggerable(lvmeng)) {
-                if (!lvmeng->hasFlag("KejiSlashInPlayPhase") && lvmeng->askForSkillInvoke(objectName())) {
+            if (change.to == Player::Discard && lvmeng->isAlive() && lvmeng->hasSkill(objectName()) ) {
+                if (can_trigger && lvmeng->askForSkillInvoke(objectName())) {
                     if (lvmeng->getHandcardNum() > lvmeng->getMaxCards()) {
                         int index = qrand() % 2 + 1;
                         if (!lvmeng->hasInnateSkill(objectName()) && lvmeng->hasSkill("mouduan"))
@@ -1451,8 +1448,6 @@ public:
                     lvmeng->skip(Player::Discard);
                 }
             }
-            if (lvmeng->hasFlag("KejiSlashInPlayPhase"))
-                lvmeng->setFlags("-KejiSlashInPlayPhase");
         } else if (lvmeng->getPhase() == Player::Play) {
             CardStar card = NULL;
             if (triggerEvent == PreCardUsed)
@@ -1919,44 +1914,50 @@ public:
     }
 
     virtual bool trigger(TriggerEvent triggerEvent, Room *room, ServerPlayer *player, QVariant &data) const{
-        if (triggerEvent == TargetSpecified && TriggerSkill::triggerable(player)) {
+        if (triggerEvent == TargetSpecified) {
             CardUseStruct use = data.value<CardUseStruct>();
-            bool can_invoke = false;
-            if (use.card->isKindOf("Slash")) {
-                can_invoke = true;
+            if (use.card->isKindOf("Slash") && TriggerSkill::triggerable(player)) {
+                LogMessage log;
+                log.from = player;
+                log.arg = objectName();
+                log.type = "#TriggerSkill";
+                room->sendLog(log);
+                room->notifySkillInvoked(player, objectName());
+                room->broadcastSkillInvoke(objectName());
+
                 QVariantList jink_list = player->tag["Jink_" + use.card->toString()].toList();
                 for (int i = 0; i < use.to.length(); i++) {
                     if (jink_list.at(i).toInt() == 1)
                         jink_list.replace(i, QVariant(2));
                 }
                 player->tag["Jink_" + use.card->toString()] = QVariant::fromValue(jink_list);
-            }
-            if (use.card->isKindOf("Duel")) {
-                if (TriggerSkill::triggerable(use.from) && use.from == player)
-                    can_invoke = true;
-                if (TriggerSkill::triggerable(player) && use.to.contains(player))
-                    can_invoke = true;
-            }
-            if (!can_invoke) return false;
+            } else if (use.card->isKindOf("Duel")) {
+                if (TriggerSkill::triggerable(player)) {
+                    LogMessage log;
+                    log.from = player;
+                    log.arg = objectName();
+                    log.type = "#TriggerSkill";
+                    room->sendLog(log);
+                    room->notifySkillInvoked(player, objectName());
+                    room->broadcastSkillInvoke(objectName());
 
-            LogMessage log;
-            log.from = player;
-            log.arg = objectName();
-            log.type = "#TriggerSkill";
-            room->sendLog(log);
-            room->notifySkillInvoked(player, objectName());
-
-            room->broadcastSkillInvoke(objectName());
-            if (use.card->isKindOf("Duel")) {
-                if (player == use.from) {
                     QStringList wushuang_tag;
                     foreach (ServerPlayer *to, use.to)
                         wushuang_tag << to->objectName();
                     player->tag["Wushuang_" + use.card->toString()] = wushuang_tag;
-                } else {
-                    QStringList wushuang_tag;
-                    wushuang_tag << use.from->objectName();
-                    player->tag["Wushuang_" + use.card->toString()] = wushuang_tag;
+                }
+                foreach (ServerPlayer *p, use.to.toSet()) {
+                    if (TriggerSkill::triggerable(p)) {
+                        LogMessage log;
+                        log.from = p;
+                        log.arg = objectName();
+                        log.type = "#TriggerSkill";
+                        room->sendLog(log);
+                        room->notifySkillInvoked(p, objectName());
+                        room->broadcastSkillInvoke(objectName());
+
+                        p->tag["Wushuang_" + use.card->toString()] = QStringList(player->objectName());
+                    }
                 }
             }
         } else if (triggerEvent == CardFinished) {
@@ -2590,9 +2591,9 @@ public:
 
 #include "god.h"
 #include "maneuvering.h"
-class NosJuejing: public TriggerSkill {
+class GdJuejing: public TriggerSkill {
 public:
-    NosJuejing(): TriggerSkill("nosjuejing") {
+    GdJuejing(): TriggerSkill("gdjuejing") {
         events << CardsMoveOneTime;
         frequency = Compulsory;
     }
@@ -2630,10 +2631,10 @@ public:
     }
 };
 
-class NosLonghun: public Longhun {
+class GdLonghun: public Longhun {
 public:
-    NosLonghun(): Longhun() {
-        setObjectName("noslonghun");
+    GdLonghun(): Longhun() {
+        setObjectName("gdlonghun");
     }
 
     virtual int getEffHp(const Player *) const{
@@ -2641,9 +2642,9 @@ public:
     }
 };
 
-class NosDuojian: public TriggerSkill {
+class GdLonghunDuojian: public TriggerSkill {
 public:
-    NosDuojian(): TriggerSkill("#noslonghun_duojian") {
+    GdLonghunDuojian(): TriggerSkill("#gdlonghun-duojian") {
         events << EventPhaseStart;
     }
 
@@ -2651,8 +2652,8 @@ public:
         if (gaodayihao->getPhase() == Player::Start) {
             foreach (ServerPlayer *p, room->getOtherPlayers(gaodayihao)) {
                if (p->getWeapon() && p->getWeapon()->isKindOf("QinggangSword")) {
-                   if (room->askForSkillInvoke(gaodayihao, "noslonghun")) {
-                       room->broadcastSkillInvoke("noslonghun", 5);
+                   if (room->askForSkillInvoke(gaodayihao, "gdlonghun")) {
+                       room->broadcastSkillInvoke("gdlonghun", 5);
                        gaodayihao->obtainCard(p->getWeapon());
                     }
                     break;
@@ -2676,6 +2677,12 @@ TestPackage::TestPackage()
     wuxing_zhuge->addSkill(new SuperGuanxing);
     wuxing_zhuge->addSkill("kongcheng");
 
+    General *gaodayihao = new General(this, "gaodayihao", "god", 1, true, true);
+    gaodayihao->addSkill(new GdJuejing);
+    gaodayihao->addSkill(new GdLonghun);
+    gaodayihao->addSkill(new GdLonghunDuojian);
+    related_skills.insertMulti("gdlonghun", "#gdlonghun-duojian");
+
     General *super_yuanshu = new General(this, "super_yuanshu", "qun", 4, true, true);
     super_yuanshu->addSkill(new SuperYongsi);
     super_yuanshu->addSkill(new MarkAssignSkill("@yongsi_test", 4));
@@ -2686,12 +2693,6 @@ TestPackage::TestPackage()
     super_caoren->addSkill(new SuperJushou);
     super_caoren->addSkill(new MarkAssignSkill("@jushou_test", 5));
     related_skills.insertMulti("super_jushou", "#@jushou_test-5");
-
-    General *gd_shenzhaoyun = new General(this, "gaodayihao", "god", 1, true, true);
-    gd_shenzhaoyun->addSkill(new NosJuejing);
-    gd_shenzhaoyun->addSkill(new NosLonghun);
-    gd_shenzhaoyun->addSkill(new NosDuojian);
-    related_skills.insertMulti("noslonghun", "#noslonghun_duojian");
 
     General *nobenghuai_dongzhuo = new General(this, "nobenghuai_dongzhuo$", "qun", 4, true, true);
     nobenghuai_dongzhuo->addSkill("jiuchi");

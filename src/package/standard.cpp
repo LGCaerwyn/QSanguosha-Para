@@ -231,6 +231,7 @@ void DelayedTrick::onUse(Room *room, const CardUseStruct &card_use) const{
     room->moveCardTo(this, use.from, use.to.first(), Player::PlaceDelayedTrick, reason, true);
 
     thread->trigger(CardUsed, room, use.from, data);
+    use = data.value<CardUseStruct>();
     thread->trigger(CardFinished, room, use.from, data);
 }
 
@@ -370,7 +371,7 @@ void Weapon::onUse(Room *room, const CardUseStruct &card_use) const{
         player->broadcastSkillInvoke("@recast");
 
         LogMessage log;
-        log.type = "#Card_Recast";
+        log.type = "#UseCard_Recast";
         log.from = player;
         log.card_str = use.card->toString();
         room->sendLog(log);

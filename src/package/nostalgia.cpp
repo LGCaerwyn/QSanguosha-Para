@@ -893,8 +893,9 @@ public:
             return false;
 
         bool skip = false;
-        foreach (ServerPlayer *fuhuanghou, room->findPlayersBySkillName(objectName())) {
-            if (player != fuhuanghou && fuhuanghou->isWounded() && !fuhuanghou->isKongcheng()
+        foreach (ServerPlayer *fuhuanghou, room->getAllPlayers()) {
+            if (TriggerSkill::triggerable(fuhuanghou)
+                && player != fuhuanghou && fuhuanghou->isWounded() && !fuhuanghou->isKongcheng()
                 && room->askForSkillInvoke(fuhuanghou, objectName())) {
                 room->broadcastSkillInvoke("zhuikong");
                 if (fuhuanghou->pindian(player, objectName(), NULL)) {
@@ -975,6 +976,14 @@ public:
                 room->showCard(player, card->getEffectiveId());
                 if (!card->isKindOf("Jink")) {
                     if (use.from->canSlash(target, use.card, false)) {
+                        LogMessage log;
+                        log.type = "#BecomeTarget";
+                        log.from = target;
+                        log.card_str = use.card->toString();
+                        room->sendLog(log);
+
+                        room->doAnimate(QSanProtocol::S_ANIMATE_INDICATE, player->objectName(), target->objectName());
+
                         use.to.append(target);
                         room->sortByActionOrder(use.to);
                         data = QVariant::fromValue(use);
@@ -1039,8 +1048,8 @@ public:
             return false;
 
         bool skip = false;
-        foreach (ServerPlayer *zhonghui, room->findPlayersBySkillName(objectName())) {
-            if (zhonghui == player || zhonghui->isKongcheng()
+        foreach (ServerPlayer *zhonghui, room->getAllPlayers()) {
+            if (!TriggerSkill::triggerable(zhonghui) || zhonghui == player || zhonghui->isKongcheng()
                 || zhonghui->getMark("nosbaijiang") > 0 || player->isKongcheng())
                 continue;
 

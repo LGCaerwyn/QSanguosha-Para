@@ -525,10 +525,6 @@ public:
         global = true;
     }
 
-    virtual bool triggerable(const ServerPlayer *target) const{
-        return target != NULL;
-    }
-
     virtual bool trigger(TriggerEvent triggerEvent, Room *room, ServerPlayer *player, QVariant &data) const{
         CardStar card = NULL;
         if (triggerEvent == PreCardUsed)
@@ -790,24 +786,9 @@ void SavageAssault::onEffect(const CardEffectStruct &effect) const{
                                          QVariant::fromValue(effect),
                                          Card::MethodResponse,
                                          effect.from->isAlive() ? effect.from : NULL);
-    if (slash)
+    if (slash) {
         room->setEmotion(effect.to, "killer");
-
-    // ================================
-    bool drwushuang_effect = true;
-    if (slash && effect.from->hasSkill("drwushuang")) {
-        room->broadcastSkillInvoke("wushuang");
-
-        LogMessage log;
-        log.from = effect.from;
-        log.arg = "drwushuang";
-        log.type = "#TriggerSkill";
-        room->sendLog(log);
-
-        drwushuang_effect = room->askForDiscard(effect.to, "drwushuang", 1, 1, true, true);
-    }
-    // ================================
-    if (!slash || !drwushuang_effect) {
+    } else {
         room->damage(DamageStruct(this, effect.from->isAlive() ? effect.from : NULL, effect.to));
         room->getThread()->delay();
     }
@@ -827,24 +808,9 @@ void ArcheryAttack::onEffect(const CardEffectStruct &effect) const{
                                         QVariant::fromValue(effect),
                                         Card::MethodResponse,
                                         effect.from->isAlive() ? effect.from : NULL);
-    if (jink && jink->getSkillName() != "eight_diagram" && jink->getSkillName() != "bazhen")
+    if (jink && jink->getSkillName() != "eight_diagram" && jink->getSkillName() != "bazhen") {
         room->setEmotion(effect.to, "jink");
-
-    // ================================
-    bool drwushuang_effect = true;
-    if (jink && effect.from->hasSkill("drwushuang")) {
-        room->broadcastSkillInvoke("wushuang");
-
-        LogMessage log;
-        log.from = effect.from;
-        log.arg = "drwushuang";
-        log.type = "#TriggerSkill";
-        room->sendLog(log);
-
-        drwushuang_effect = room->askForDiscard(effect.to, "drwushuang", 1, 1, true, true);
-    }
-    // ================================
-    if (!jink || !drwushuang_effect) {
+    } else if (!jink) {
         room->damage(DamageStruct(this, effect.from->isAlive() ? effect.from : NULL, effect.to));
         room->getThread()->delay();
     }
@@ -1338,7 +1304,7 @@ public:
 
     virtual bool trigger(TriggerEvent, Room *room, ServerPlayer *player, QVariant &data) const{
         CardsMoveOneTimeStruct move = data.value<CardsMoveOneTimeStruct>();
-        if (!move.from || move.from != player)
+        if (!player->isAlive() || !move.from || move.from != player)
             return false;
         if (player->hasTreasure("wooden_ox")) {
             int count = 0;
@@ -1366,7 +1332,7 @@ public:
                     QList<ServerPlayer *> p_list;
                     p_list << to;
                     to->addToPile("wooden_ox", player->getPile("wooden_ox"), false, p_list);
-                } else if (!move.transit) {
+                } else {
                     player->clearOnePrivatePile("wooden_ox");
                 }
                 return false;

@@ -56,6 +56,7 @@ bool LihunCard::targetFilter(const QList<const Player *> &targets, const Player 
 
 void LihunCard::onEffect(const CardEffectStruct &effect) const{
     Room *room = effect.from->getRoom();
+    effect.to->setFlags("LihunTarget");
     effect.from->turnOver();
     room->broadcastSkillInvoke("lihun", 1);
 
@@ -65,7 +66,6 @@ void LihunCard::onEffect(const CardEffectStruct &effect) const{
                               effect.to->objectName(), "lihun", QString());
         room->moveCardTo(dummy_card, effect.to, effect.from, Player::PlaceHand, reason, false);
     }
-    effect.to->setFlags("LihunTarget");
     delete dummy_card;
 }
 
@@ -568,7 +568,7 @@ public:
         return target != NULL;
     }
 
-    virtual bool trigger(TriggerEvent , Room *room, ServerPlayer *, QVariant &data) const{
+    virtual bool trigger(TriggerEvent, Room *room, ServerPlayer *, QVariant &data) const{
         PindianStar pindian = data.value<PindianStar>();
         if (pindian->reason != "dahe" || !pindian->from->hasSkill(objectName())
             || room->getCardPlace(pindian->to_card->getEffectiveId()) != Player::PlaceTable)
@@ -1040,6 +1040,10 @@ public:
         return target && target->getPhase() == Player::Judge && target->containsTrick("YanxiaoCard");
     }
 
+    virtual int getPriority(TriggerEvent) const{
+        return 3;
+    }
+
     virtual bool onPhaseChange(ServerPlayer *target) const{
         CardsMoveStruct move;
         LogMessage log;
@@ -1270,9 +1274,8 @@ public:
             if (!xuehen_trigger) return false;
 
             QVariant data = QVariant::fromValue((PlayerStar)player);
-            QList<ServerPlayer *> xiahous = room->findPlayersBySkillName("fenyong");
-            foreach (ServerPlayer *xiahou, xiahous) {
-                if (xiahou->getMark("@fenyong") > 0) {
+            foreach (ServerPlayer *xiahou, room->getAllPlayers()) {
+                if (TriggerSkill::triggerable(xiahou) && xiahou->getMark("@fenyong") > 0) {
                     room->setPlayerMark(xiahou, "@fenyong", 0);
                     if (xiahou->hasSkill("xuehen"))
                         xuehen_trigger->trigger(NonTrigger, room, xiahou, data);
@@ -1781,17 +1784,14 @@ public:
             && ((move.reason.m_reason & CardMoveReason::S_MASK_BASIC_REASON) == CardMoveReason::S_REASON_DISCARD)) {
             if (liuxie->askForSkillInvoke(objectName())) {
                 room->broadcastSkillInvoke(objectName(), 1);
+                QList<int> to_add;
                 int i = 0;
-                QList<int> ids = move.card_ids, to_add;
-                QList<Player::Place> places = move.from_places;
-                foreach (int card_id, ids) {
-                    if (places[i] == Player::PlaceHand) {
+                foreach (int card_id, move.card_ids) {
+                    if (move.from_places[i] == Player::PlaceHand)
                         to_add.append(card_id);
-                        move.card_ids.removeOne(card_id);
-                        move.from_places.removeAt(i);
-                    }
                     i++;
                 }
+                move.removeCardIds(to_add);
                 data = QVariant::fromValue(move);
                 if (!to_add.isEmpty())
                     liuxie->addToPile("edict", to_add, true, QList<ServerPlayer *>(), move.reason);

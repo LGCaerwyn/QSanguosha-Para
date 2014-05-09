@@ -142,7 +142,7 @@ public:
         events << CardEffected;
     }
 
-    virtual bool trigger(TriggerEvent , Room *room, ServerPlayer *player, QVariant &data) const{
+    virtual bool trigger(TriggerEvent, Room *room, ServerPlayer *player, QVariant &data) const{
         CardEffectStruct effect = data.value<CardEffectStruct>();
         if (effect.card->isKindOf("SavageAssault")) {
             room->broadcastSkillInvoke(avoid_skill);
@@ -825,10 +825,6 @@ public:
     Baonue(): TriggerSkill("baonue$") {
         events << Damage << PreDamageDone;
         global = true;
-    }
-
-    virtual bool triggerable(const ServerPlayer *target) const{
-        return target != NULL;
     }
 
     virtual bool trigger(TriggerEvent triggerEvent, Room *room, ServerPlayer *player, QVariant &data) const{

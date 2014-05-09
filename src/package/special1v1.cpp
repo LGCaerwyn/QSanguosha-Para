@@ -397,7 +397,7 @@ public:
         events << CardEffected;
     }
 
-    virtual bool trigger(TriggerEvent , Room *room, ServerPlayer *player, QVariant &data) const{
+    virtual bool trigger(TriggerEvent, Room *room, ServerPlayer *player, QVariant &data) const{
         CardEffectStruct effect = data.value<CardEffectStruct>();
         if (effect.card->isKindOf("SavageAssault")) {
             room->broadcastSkillInvoke(player->isFemale() ? "juxiang" : "huoshou");
@@ -462,7 +462,7 @@ public:
         frequency = Frequent;
     }
 
-    virtual bool trigger(TriggerEvent , Room *room, ServerPlayer *sunshangxiang, QVariant &data) const{
+    virtual bool trigger(TriggerEvent, Room *room, ServerPlayer *sunshangxiang, QVariant &data) const{
         CardsMoveOneTimeStruct move = data.value<CardsMoveOneTimeStruct>();
         if (move.from == sunshangxiang || move.from == NULL)
             return false;
@@ -495,16 +495,11 @@ public:
 
                 if (!card_ids.isEmpty()) {
                     room->broadcastSkillInvoke("yinli");
-                    foreach (int id, card_ids) {
-                        if (move.card_ids.contains(id)) {
-                            move.from_places.removeAt(move.card_ids.indexOf(id));
-                            move.card_ids.removeOne(id);
-                            data = QVariant::fromValue(move);
-                        }
-                        room->moveCardTo(Sanguosha->getCard(id), sunshangxiang, Player::PlaceHand, move.reason, true);
-                        if (!sunshangxiang->isAlive())
-                            break;
-                    }
+                    move.removeCardIds(card_ids);
+                    data = QVariant::fromValue(move);
+                    DummyCard *dummy = new DummyCard(card_ids);
+                    room->moveCardTo(dummy, sunshangxiang, Player::PlaceHand, move.reason, true);
+                    delete dummy;
                 }
             }
         }
@@ -746,10 +741,7 @@ class BotuCount: public TriggerSkill {
 public:
     BotuCount(): TriggerSkill("#botu-count") {
         events << PreCardUsed << CardResponded << TurnStart;
-    }
-
-    virtual bool triggerable(const ServerPlayer *target) const{
-        return target != NULL;
+        global = true;
     }
 
     virtual bool trigger(TriggerEvent triggerEvent, Room *, ServerPlayer *player, QVariant &data) const{
@@ -774,7 +766,6 @@ class Botu: public PhaseChangeSkill {
 public:
     Botu(): PhaseChangeSkill("botu") {
         frequency = Frequent;
-        global = true;
     }
 
     virtual int getPriority(TriggerEvent) const{
@@ -983,10 +974,6 @@ public:
 
     virtual int getPriority(TriggerEvent) const{
         return 4;
-    }
-
-    virtual bool triggerable(const ServerPlayer *target) const{
-        return target != NULL;
     }
 
     virtual bool trigger(TriggerEvent triggerEvent, Room *room, ServerPlayer *player, QVariant &data) const{

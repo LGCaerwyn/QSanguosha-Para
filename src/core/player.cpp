@@ -508,12 +508,6 @@ const EquipCard *Player::getEquip(int index) const{
     default:
             return NULL;
     }
-    if (equip == NULL && hasSkill("drmashu")) {
-        if (index == 2 && offensive_horse)
-            equip = offensive_horse;
-        else if (index == 3 && defensive_horse)
-            equip = defensive_horse;
-    }
     if (equip != NULL)
         return qobject_cast<const EquipCard *>(equip->getRealCard());
 
@@ -531,6 +525,25 @@ bool Player::hasArmorEffect(const QString &armor_name) const{
     if (!tag["Qinggang"].toStringList().isEmpty() || getMark("Armor_Nullified") > 0
         || getMark("Equips_Nullified_to_Yourself") > 0)
         return false;
+
+    const Player *current = NULL;
+    foreach (const Player *p, getAliveSiblings()) {
+        if (p->getPhase() != Player::NotActive) {
+            current = p;
+            break;
+        }
+    }
+    if (current && current->hasSkill("benxi")) {
+        bool alladj = true;
+        foreach (const Player *p, current->getAliveSiblings()) {
+            if (current->distanceTo(p) != 1) {
+                alladj = false;
+                break;
+            }
+        }
+        if (alladj) return false;
+    }
+
     if (armor_name == "bazhen")
         return armor == NULL && alive && hasSkill("bazhen");
     else {
@@ -829,9 +842,9 @@ QSet<const Skill *> Player::getSkills(bool include_equip, bool visible_only) con
 QList<const Skill *> Player::getSkillList(bool include_equip, bool visible_only) const{
     QList<const Skill *> skillList;
     QStringList skill_list = skills + acquired_skills;
-    foreach (QString skill_name, skill_list.toSet()) {
+    foreach (QString skill_name, skill_list) {
         const Skill *skill = Sanguosha->getSkill(skill_name);
-        if (skill
+        if (skill && !skillList.contains(skill)
             && (include_equip || !hasEquipSkill(skill->objectName()))
             && (!visible_only || skill->isVisible()))
             skillList << skill;

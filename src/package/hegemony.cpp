@@ -16,7 +16,7 @@ public:
         return target != NULL;
     }
 
-    virtual bool trigger(TriggerEvent , Room *room, ServerPlayer *player, QVariant &) const{
+    virtual bool trigger(TriggerEvent, Room *room, ServerPlayer *player, QVariant &) const{
         if (player->getPhase() != Player::Finish)
             return false;
         ServerPlayer *yuejin = room->findPlayerBySkillName(objectName());
@@ -43,7 +43,7 @@ public:
         events << HpRecover;
     }
 
-    virtual bool trigger(TriggerEvent , Room *room, ServerPlayer *player, QVariant &data) const{
+    virtual bool trigger(TriggerEvent, Room *room, ServerPlayer *player, QVariant &data) const{
         RecoverStruct recover_struct = data.value<RecoverStruct>();
         int recover = recover_struct.recover;
         for (int i = 0; i < recover; i++) {
@@ -197,7 +197,7 @@ public:
         frequency = Compulsory;
     }
 
-    virtual bool trigger(TriggerEvent , Room *room, ServerPlayer *player, QVariant &data) const{
+    virtual bool trigger(TriggerEvent, Room *room, ServerPlayer *player, QVariant &data) const{
         DamageStruct damage = data.value<DamageStruct>();
         if (damage.from) {
             if (damage.from->getEquips().length() <= qMin(2, player->getEquips().length())) {
@@ -226,7 +226,7 @@ public:
         events << BeforeCardsMove;
     }
 
-    virtual bool trigger(TriggerEvent , Room *room, ServerPlayer *kongrong, QVariant &data) const{
+    virtual bool trigger(TriggerEvent, Room *room, ServerPlayer *kongrong, QVariant &data) const{
         CardsMoveOneTimeStruct move = data.value<CardsMoveOneTimeStruct>();
         if (move.from != kongrong)
             return false;
@@ -251,15 +251,12 @@ public:
                 if (kongrong->isDead()) break;
             }
 
-            QList<int> ids = move.card_ids;
-            i = 0;
-            foreach (int card_id, ids) {
-                if (original_lirang.contains(card_id) && !lirang_card.contains(card_id)) {
-                    move.card_ids.removeOne(card_id);
-                    move.from_places.removeAt(i);
-                }
-                i++;
+            QList<int> ids;
+            foreach (int card_id, original_lirang) {
+                if (!lirang_card.contains(card_id))
+                    ids << card_id;
             }
+            move.removeCardIds(ids);
             data = QVariant::fromValue(move);
         }
         return false;
@@ -629,8 +626,9 @@ void QingchengCard::onUse(Room *room, const CardUseStruct &use) const{
     CardMoveReason reason(CardMoveReason::S_REASON_THROW, player->objectName(), QString(), card_use.card->getSkillName(), QString());
     room->moveCardTo(this, player, NULL, Player::DiscardPile, reason, true);
 
-    thread->trigger(CardUsed, room, player, data);
-    thread->trigger(CardFinished, room, player, data);
+    thread->trigger(CardUsed, room, card_use.from, data);
+    card_use = data.value<CardUseStruct>();
+    thread->trigger(CardFinished, room, card_use.from, data);
 }
 
 bool QingchengCard::targetFilter(const QList<const Player *> &targets, const Player *to_select, const Player *Self) const{

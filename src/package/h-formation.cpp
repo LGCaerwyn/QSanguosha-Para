@@ -23,9 +23,8 @@ public:
     }
 
     virtual bool trigger(TriggerEvent, Room *room, ServerPlayer *player, QVariant &data) const{
-        QList<ServerPlayer *> dengais = room->findPlayersBySkillName(objectName());
-        foreach (ServerPlayer *dengai, dengais) {
-            if (!player->isAlive()) break;
+        foreach (ServerPlayer *dengai, room->getAllPlayers()) {
+            if (!TriggerSkill::triggerable(dengai) || !player->isAlive()) break;
             if (dengai->getPile("field").isEmpty()) continue;
             if (!room->askForSkillInvoke(dengai, objectName(), data)) continue;
             room->fillAG(dengai->getPile("field"), dengai);
@@ -134,21 +133,23 @@ bool HeyiCard::targetsFeasible(const QList<const Player *> &targets, const Playe
 }
 
 void HeyiCard::onUse(Room *room, const CardUseStruct &card_use) const{
-    ServerPlayer *caohong = card_use.from;
+    CardUseStruct use = card_use;
 
     LogMessage log;
-    log.from = caohong;
+    log.from = use.from;
     log.to << card_use.to;
     log.type = "#UseCard";
     log.card_str = toString();
     room->sendLog(log);
 
-    QVariant data = QVariant::fromValue(card_use);
+    QVariant data = QVariant::fromValue(use);
     RoomThread *thread = room->getThread();
 
-    thread->trigger(PreCardUsed, room, caohong, data);
-    thread->trigger(CardUsed, room, caohong, data);
-    thread->trigger(CardFinished, room, caohong, data);
+    thread->trigger(PreCardUsed, room, use.from, data);
+    use = data.value<CardUseStruct>();
+    thread->trigger(CardUsed, room, use.from, data);
+    use = data.value<CardUseStruct>();
+    thread->trigger(CardFinished, room, use.from, data);
 }
 
 void HeyiCard::use(Room *room, ServerPlayer *source, QList<ServerPlayer *> &targets) const{
@@ -289,24 +290,24 @@ public:
 class Shengxi: public TriggerSkill {
 public:
     Shengxi(): TriggerSkill("shengxi") {
-        events << DamageDone << EventPhaseEnd;
+        events << PreDamageDone << EventPhaseEnd;
         frequency = Frequent;
         global = true;
     }
 
-    virtual bool triggerable(const ServerPlayer *target) const{
-        return target != NULL;
-    }
-
-    virtual bool trigger(TriggerEvent triggerEvent, Room *, ServerPlayer *player, QVariant &data) const{
+    virtual bool trigger(TriggerEvent triggerEvent, Room *room, ServerPlayer *player, QVariant &data) const{
         if (triggerEvent == EventPhaseEnd) {
-            if (TriggerSkill::triggerable(player) && player->getPhase() == Player::Play) {
-                if (!player->hasFlag("ShengxiDamageInPlayPhase") && player->askForSkillInvoke(objectName()))
-                    player->drawCards(2, objectName());
-            }
-            if (player->hasFlag("ShengxiDamageInPlayPhase"))
+            bool can_trigger = true;
+            if (player->hasFlag("ShengxiDamageInPlayPhase")) {
+                can_trigger = false;
                 player->setFlags("-ShengxiDamageInPlayPhase");
-        } else if (triggerEvent == DamageDone) {
+            }
+            if (player->isAlive() && player->hasSkill(objectName()) && player->getPhase() == Player::Play
+                && can_trigger && player->askForSkillInvoke(objectName())) {
+                room->broadcastSkillInvoke(objectName());
+                player->drawCards(2, objectName());
+            }
+        } else if (triggerEvent == PreDamageDone) {
             DamageStruct damage = data.value<DamageStruct>();
             if (damage.from && damage.from->getPhase() == Player::Play && !damage.from->hasFlag("ShengxiDamageInPlayPhase"))
                 damage.from->setFlags("ShengxiDamageInPlayPhase");

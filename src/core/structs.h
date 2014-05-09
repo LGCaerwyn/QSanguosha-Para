@@ -196,8 +196,19 @@ struct CardsMoveOneTimeStruct {
     QString to_pile_name;
 
     QList<bool> open; // helper to prevent sending card_id to unrelevant clients
-    bool transit; // helper to judge whether the move is intermediate
     bool is_last_handcard;
+
+    inline void removeCardIds(const QList<int> &to_remove) {
+        foreach (int id, to_remove) {
+            int index = card_ids.indexOf(id);
+            if (index != -1) {
+                card_ids.removeAt(index);
+                from_places.removeAt(index);
+                from_pile_names.removeAt(index);
+                open.removeAt(index);
+            }
+        }
+    }
 };
 
 struct CardsMoveStruct {
