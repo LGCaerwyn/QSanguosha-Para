@@ -928,7 +928,7 @@ void RoomScene::updateTable() {
 
     int *seatToRegion;
     bool pkMode = false;
-    if (ServerInfo.GameMode == "04_1v3" && game_started) {
+    if ((ServerInfo.GameMode == "04_1v3" || ServerInfo.GameMode == "04_boss") && game_started) {
         seatToRegion = hulaoSeatIndex[Self->getSeat() - 1];
         pkMode = true;
     } else if (ServerInfo.GameMode == "06_3v3" && game_started) {
@@ -1109,6 +1109,9 @@ void RoomScene::enableTargets(const Card *card) {
             if (Self->isCardLimited(card, method))
                 enabled = false;
         }
+        if (status == Client::RespondingUse && ClientInstance->m_respondingUseFixedTarget
+            && Sanguosha->isProhibited(Self, ClientInstance->m_respondingUseFixedTarget, card))
+            enabled = false;
         if (status == Client::RespondingForDiscard && Self->isCardLimited(card, Card::MethodDiscard))
             enabled = false;
     }
@@ -3650,9 +3653,13 @@ void RoomScene::doMovingAnimation(const QString &name, const QStringList &args) 
 
 void RoomScene::doAppearingAnimation(const QString &name, const QStringList &args) {
     QSanSelectableItem *item = new QSanSelectableItem(QString("image/system/animation/%1.png").arg(name));
+    item->setZValue(10086.0);
     addItem(item);
 
-    QPointF from = getAnimationObject(args.at(0))->scenePos();
+    QGraphicsObject *fromItem = getAnimationObject(args.at(0));
+    QPointF from = fromItem->scenePos();
+    if (fromItem == dashboard)
+        from.setX(fromItem->boundingRect().width() / 2);
     item->setPos(from);
 
     QPropertyAnimation *disappear = new QPropertyAnimation(item, "opacity");
