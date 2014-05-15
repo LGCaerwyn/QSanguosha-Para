@@ -440,7 +440,7 @@ public:
             bool do_anim = false;
             foreach (ServerPlayer *p, use.to.toSet()) {
                 if (p->getMark("Equips_of_Others_Nullified_to_You") == 0) {
-                    do_anim = (p->getArmor() && p->hasArmorEffect(p->getArmor()->objectName())) || p->hasArmorEffect("bazhen");
+                    do_anim = (p->getArmor() && p->hasArmorEffect(p->getArmor()->objectName())) || p->hasSkills("bazhen|bossmanjia");
                     p->addQinggangTag(use.card);
                 }
             }
@@ -499,7 +499,7 @@ public:
     }
 
     virtual bool isEnabledAtResponse(const Player *player, const QString &pattern) const{
-        return player->getHandcardNum() >= 2 && pattern == "slash" && player->getMark("Equips_Nullified_to_Yourself") == 0;
+        return pattern == "slash" && player->getMark("Equips_Nullified_to_Yourself") == 0;
     }
 
     virtual bool viewFilter(const QList<const Card *> &selected, const Card *to_select) const{

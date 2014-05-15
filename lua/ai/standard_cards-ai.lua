@@ -1413,7 +1413,7 @@ sgs.ai_skill_invoke.eight_diagram = function(self, data)
 	if self.player:hasSkills("tiandu|leiji") then return true end
 	local zhangjiao = self.room:findPlayerBySkillName("guidao")
 	if zhangjiao and self:isEnemy(zhangjiao) and self:getFinalRetrial(zhangjiao) == 2 then
-		if getKnownCard(zhangjiao, "black", false, "he") > 1 then return false end
+		if getKnownCard(zhangjiao, self.player, "black", false, "he") > 1 then return false end
 		if self:getCardsNum("Jink") > 1 and getKnownCard(zhangjiao, self.player, "black", false, "he") > 0 then return false end
 	end
 	if self:getDamagedEffects(self.player, nil, true) or self:needToLoseHp(self.player, nil, true) then return false end
@@ -1436,7 +1436,7 @@ function sgs.ai_armor_value.eight_diagram(player, self)
 		return 6
 	end
 
-	if self.role == "loyalist" and self.player:getKingdom() == "wei" and not self.player:hasSkills("bazhen|yizhong") and self.room:getLord() and self.room:getLord():hasLordSkill("hujia") then
+	if self.role == "loyalist" and self.player:getKingdom() == "wei" and not self.player:hasSkills("bazhen|yizhong|bossmanjia") and self.room:getLord() and self.room:getLord():hasLordSkill("hujia") then
 		return 5
 	end
 
@@ -2832,7 +2832,7 @@ sgs.ai_skill_askforag.amazing_grace = function(self, card_ids)
 	local exnihilo, jink, analeptic, nullification, snatch, dismantlement, indulgence
 	for _, card in ipairs(cards) do
 		if isCard("ExNihilo", card, self.player) then
-			if not nextPlayerCanUse or (not self:willSkipPlayPhase() and (self.player:hasSkills("nosjizhi|jizhi|zhiheng|nosrende|rende") or not nextp:hasSkills("nosjizhi|jizhi|zhiheng"))) then
+			if not nextPlayerCanUse or (not self:willSkipPlayPhase() and (self.player:hasSkills("nosjizhi|jizhi|zhiheng|nosrende|rende") or not nextAlive:hasSkills("nosjizhi|jizhi|zhiheng"))) then
 				exnihilo = card:getEffectiveId()
 			end
 		elseif isCard("Jink", card, self.player) then
@@ -2884,7 +2884,7 @@ sgs.ai_skill_askforag.amazing_grace = function(self, card_ids)
 		end
 	end
 
-	if nullification and (self:getCardsNum("Nullification") < 2 or not nextplayercanuse) then 
+	if nullification and (self:getCardsNum("Nullification") < 2 or not nextPlayerCanUse) then 
 		return nullification
 	end
 
@@ -2913,13 +2913,13 @@ sgs.ai_skill_askforag.amazing_grace = function(self, card_ids)
 		end
 	end
 
-	if armor and not self.player:hasSkills("yizhong|bazhen") then
+	if armor and not self.player:hasSkills("yizhong|bazhen|bossmanjia") then
 		if eightdiagram then
 			local lord = self.room:getLord()
 			if self.player:hasSkills("tiandu|leiji|nosleiji|noszhenlie|gushou|hongyan") and not self:getSameEquip(sgs.Sanguosha:getCard(eightdiagram)) then
 				return eightdiagram
 			end
-			if nextPlayerIsEnemy and nextAlive:hasSkills("tiandu|leiji|nosleiji|noszhenlie|gushou|hongyan") and not nextAlive:hasSkills("bazhen|yizhong")
+			if nextPlayerIsEnemy and nextAlive:hasSkills("tiandu|leiji|nosleiji|noszhenlie|gushou|hongyan") and not nextAlive:hasSkills("bazhen|yizhong|bossmanjia")
 				and not self:getSameEquip(sgs.Sanguosha:getCard(eightdiagram), nextAlive) then
 				return eightdiagram
 			end

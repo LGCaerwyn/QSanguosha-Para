@@ -252,11 +252,13 @@ ServerPlayer *Room::getCurrentDyingPlayer() const{
     return who;
 }
 
-void Room::revivePlayer(ServerPlayer *player) {
+void Room::revivePlayer(ServerPlayer *player, bool sendlog) {
+    int turn = player->getMark("Global_TurnCount");
     player->setAlive(true);
     player->throwAllMarks(false);
     broadcastProperty(player, "alive");
     setEmotion(player, "revive");
+    setPlayerMark(player, "Global_TurnCount", turn);
 
     m_alivePlayers.clear();
     foreach (ServerPlayer *player, m_players) {
@@ -271,6 +273,13 @@ void Room::revivePlayer(ServerPlayer *player) {
 
     doBroadcastNotify(S_COMMAND_REVIVE_PLAYER, toJsonString(player->objectName()));
     updateStateItem();
+
+    if (sendlog) {
+        LogMessage log;
+        log.type = "#Revive";
+        log.from = player;
+        sendLog(log);
+    }
 }
 
 static bool CompareByRole(ServerPlayer *player1, ServerPlayer *player2) {
@@ -933,14 +942,14 @@ QString Room::askForChoice(ServerPlayer *player, const QString &skill_name, cons
             bool success = doRequest(player, S_COMMAND_MULTIPLE_CHOICE, toJsonArray(skill_name, choices), true);
             Json::Value clientReply = player->getClientReply();
             if (!success || !clientReply.isString())
-                answer = ".";
+                answer = "cancel";
             else
                 answer = toQString(clientReply);
         }
     }
 
     if (!validChoices.contains(answer))
-        answer = validChoices[0];
+        answer = validChoices.at(qrand() % validChoices.length());
 
     QVariant decisionData = QVariant::fromValue("skillChoice:" + skill_name + ":" + answer);
     thread->trigger(ChoiceMade, this, player, decisionData);
@@ -1082,6 +1091,8 @@ bool Room::_askForNullification(const Card *trick, ServerPlayer *from, ServerPla
     effect.to = repliedPlayer;
     if (card->isCancelable(effect))
         result = !_askForNullification(card, repliedPlayer, to, !positive, aiHelper);
+    if (card->isVirtualCard())
+        delete card;
     return result;
 }
 
@@ -2547,14 +2558,14 @@ void Room::run() {
         startGame();
     } else if (mode == "04_boss") {
         ServerPlayer *lord = m_players.first();
-        QStringList boss_lv_1;
-        boss_lv_1 << "boss_chi" << "boss_mei" << "boss_wang" << "boss_liang";
+        QStringList boss_lv_1 = Config.BossGenerals.first().split("+");
         if (Config.value("OptionalBoss", false).toBool()) {
             QString gen = askForGeneral(lord, boss_lv_1);
             setPlayerProperty(lord, "general", gen);
         } else {
             setPlayerProperty(lord, "general", boss_lv_1.at(qrand() % 4));
         }
+        setPlayerMark(lord, "BossMode_Boss", 1);
 
         QList<ServerPlayer *> players = m_players;
         players.removeOne(lord);
@@ -2940,6 +2951,8 @@ bool Room::useCard(const CardUseStruct &use, bool add_history) {
             CardUseStruct new_use = card_use;
             new_use.card = card;
             useCard(new_use);
+            if (card->isVirtualCard() && !card->isKindOf("Nullification")) // delete Nullification in askForNullification
+                delete card;
         }
     }
     catch (TriggerEvent triggerEvent) {
@@ -3906,9 +3919,9 @@ void Room::broadcastSkillInvoke(const QString &skill_name, bool isMale, int type
     doBroadcastNotify(QSanProtocol::S_COMMAND_LOG_EVENT, args);
 }
 
-void Room::doLightbox(const QString &lightboxName, int duration) {
+void Room::doLightbox(const QString &lightboxName, int duration, int pixelSize) {
     if (Config.AIDelay == 0) return;
-    doAnimate(S_ANIMATE_LIGHTBOX, lightboxName, QString::number(duration));
+    doAnimate(S_ANIMATE_LIGHTBOX, lightboxName, QString("%1:%2").arg(duration).arg(pixelSize));
     thread->delay(duration / 1.2);
 }
 
@@ -5332,4 +5345,17 @@ void Room::networkDelayTestCommand(ServerPlayer *player, const QString &) {
 void Room::sortByActionOrder(QList<ServerPlayer *> &players) {
     if (players.length() > 1)
         qSort(players.begin(), players.end(), ServerPlayer::CompareByActionOrder);
+}
+
+#include "lua.hpp"
+int Room::getBossModeExpMult(int level) const{
+    lua_getglobal(L, "bossModeExpMult");
+    lua_pushinteger(L, level);
+    int ret = lua_pcall(L, 1, 1, 0);
+    int res = 0;
+    if (ret == 0) {
+        res = lua_tointeger(L, -1);
+        lua_pop(L, 1);
+    }
+    return res;
 }
