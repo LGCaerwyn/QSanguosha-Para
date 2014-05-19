@@ -6,7 +6,7 @@
 #include "nativesocket.h"
 #include "recorder.h"
 #include "jsonutils.h"
-#include "SkinBank.h"
+#include "skin-bank.h"
 
 #include <QApplication>
 #include <QMessageBox>
@@ -1366,7 +1366,7 @@ void Client::takeAG(const Json::Value &take_str) {
         emit ag_taken(NULL, card_id, move_cards);
     } else {
         ClientPlayer *taker = getPlayer(toQString(take_str[0]));
-		if (move_cards)
+        if (move_cards)
             taker->addCard(card, Player::PlaceHand);
         emit ag_taken(taker, card_id, move_cards);
     }

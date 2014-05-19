@@ -1,4 +1,4 @@
-#include "GenericCardContainerUI.h"
+#include "generic-cardcontainer-ui.h"
 #include <QParallelAnimationGroup>
 #include <qpropertyanimation.h>
 #include <QGraphicsSceneMouseEvent>
@@ -753,7 +753,7 @@ void PlayerCardContainer::startHuaShen(QString generalName, QString skillName) {
     if (!skillName.isEmpty()) {
         _m_extraSkillText->show();
         _m_extraSkillBg->setToolTip(Sanguosha->getSkill(skillName)->getDescription());
-	}
+    }
     _adjustComponentZValues();
 }
 

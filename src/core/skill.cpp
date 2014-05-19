@@ -147,7 +147,7 @@ QDialog *Skill::getDialog() const{
 }
 
 ViewAsSkill::ViewAsSkill(const QString &name)
-    : Skill(name), response_pattern(QString()), response_or_use(false)
+    : Skill(name), response_pattern(QString()), response_or_use(false), expand_pile(QString())
 {
 }
 
@@ -226,6 +226,8 @@ bool OneCardViewAsSkill::viewFilter(const Card *to_select) const{
         if (pat.endsWith("!")) {
             if (Self->isJilei(to_select)) return false;
             pat.chop(1);
+        } else if (response_or_use && pat.contains("hand")) {
+            pat.replace("hand", "hand,wooden_ox");
         }
         ExpPattern pattern(pat);
         return pattern.match(Self, to_select);

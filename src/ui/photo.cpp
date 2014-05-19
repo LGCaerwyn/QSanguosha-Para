@@ -7,7 +7,7 @@
 #include "client.h"
 #include "playercarddialog.h"
 #include "rolecombobox.h"
-#include "SkinBank.h"
+#include "skin-bank.h"
 
 #include <QPainter>
 #include <QDrag>
@@ -58,6 +58,13 @@ Photo::Photo(): PlayerCardContainer() {
     _m_duanchangMask->setBrush(duanchang_brush);
 
     _createControls();
+}
+
+Photo::~Photo() {
+    if (emotion_item) {
+        delete emotion_item;
+        emotion_item = NULL;
+    }
 }
 
 void Photo::refresh(bool killed) {

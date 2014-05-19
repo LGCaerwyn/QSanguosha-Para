@@ -15,7 +15,7 @@ struct LogMessage;
 #include "serverplayer.h"
 #include "roomthread.h"
 #include "protocol.h"
-#include "RoomState.h"
+#include "room-state.h"
 #include <qmutex.h>
 #include <QStack>
 
@@ -36,6 +36,7 @@ public:
     typedef bool (Room::*ResponseVerifyFunction)(ServerPlayer *, const Json::Value &, void *);
 
     explicit Room(QObject *parent, const QString &mode);
+    ~Room();
     ServerPlayer *addSocket(ClientSocket *socket);
     inline int getId() const{ return _m_Id; } 
     bool isFull() const;

@@ -52,7 +52,7 @@ sgs.ai_skill_invoke.bosslianyu = function(self, data)
 			end
 		end
 	end
-	return value / avail >= 2 / 3
+	return avail > 0 and value / avail >= 2 / 3
 end
 
 sgs.ai_skill_invoke.bosssuoming = function(self, data)
@@ -85,14 +85,14 @@ sgs.ai_skill_invoke.bossqiangzheng = function(self, data)
 end
 
 sgs.ai_skill_invoke.bossqushou = function(self, data)
-	local sa = sgs.Sanguosha:cloneCard("savage_assault")
+	local sa = sgs.cloneCard("savage_assault")
 	local dummy_use = { isDummy = true }
 	self:useTrickCard(sa, dummy_use)
 	return (dummy_use.card ~= nil)
 end
 
 sgs.ai_skill_invoke.bossmojian = function(self, data)
-	local aa = sgs.Sanguosha:cloneCard("archery_attack")
+	local aa = sgs.cloneCard("archery_attack")
 	local dummy_use = { isDummy = true }
 	self:useTrickCard(aa, dummy_use)
 	return (dummy_use.card ~= nil)
