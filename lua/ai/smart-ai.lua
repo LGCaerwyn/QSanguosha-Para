@@ -1061,7 +1061,7 @@ function sgs.gameProcess(room, arg, update)
 	local loyal_num = sgs.current_mode_players["loyalist"]
 	if rebel_num == 0 and loyal_num > 0 then return "loyalist"
 	elseif loyal_num == 0 and rebel_num > 1 then return "rebel" end
-	local loyal_value, rebel_value = 0, 0, 0
+	local loyal_value, rebel_value = 0, 0
 	local health = sgs.isLordHealthy()
 	local danger = sgs.isLordInDanger()
 	local currentplayer = room:getCurrent()
@@ -1079,7 +1079,6 @@ function sgs.gameProcess(room, arg, update)
 	end
 	local diff = loyal_value - rebel_value + (loyal_num + 0.75 - rebel_num) * 2
 	sgs.ai_gameProcess_arg = diff
-	if arg and arg == 1 then return diff end
 
 	local process = "neutral"
 	if diff >= 2 then
@@ -1096,6 +1095,7 @@ function sgs.gameProcess(room, arg, update)
 	elseif not health then process = "rebelish"
 	end
 	sgs.ai_gameProcess = process
+	if arg and arg == 1 then return diff end
 	return process
 end
 
@@ -1500,10 +1500,8 @@ function SmartAI:updatePlayers(clear_flags)
 	end
 	table.insert(self.friends, self.player)
 
-	if update then
-		self:updateAlivePlayerRoles()
-		sgs.gameProcess(self.room, 1, true)
-	end
+	self:updateAlivePlayerRoles()
+	sgs.gameProcess(self.room, 1, true)
 end
 
 function sgs.evaluateAlivePlayersRole()
@@ -1710,9 +1708,9 @@ function SmartAI:filterEvent(triggerEvent, player, data)
 			end
 		end
 	elseif event == sgs.CardUsed or event == sgs.GameStart or event == sgs.EventPhaseStart then
-		self:updatePlayers(true, self == sgs.recorder)
+		self:updatePlayers(true)
 	elseif event == sgs.BuryVictim or event == sgs.HpChanged or event == sgs.MaxHpChanged then
-		self:updatePlayers(false, self == sgs.recorder)
+		self:updatePlayers(false)
 	end
 
 	if triggerEvent == sgs.BuryVictim then
@@ -2163,14 +2161,13 @@ function SmartAI:askForDiscard(reason, discard_num, min_num, optional, include_e
 	for _, card in ipairs(cards) do
 		if exchange or not self.player:isJilei(card) then
 			place = self.room:getCardPlace(card:getEffectiveId())
-			if discardEquip and place == sgs.Player_PlaceEquip then
+			if self.player:hasSkills(sgs.lose_equip_skill) and place == sgs.Player_PlaceEquip then
 				table.insert(temp, card:getEffectiveId())
 			elseif self:getKeepValue(card) >= 4.1 then
 				table.insert(temp, card:getEffectiveId())
 			else
 				table.insert(to_discard, card:getEffectiveId())
 			end
-			if self.player:hasSkills(sgs.lose_equip_skill) and place == sgs.Player_PlaceEquip then discardEquip = true end
 			if #to_discard == discard_num then return to_discard end
 		end
 	end
@@ -4031,7 +4028,8 @@ end
 
 function getKnownNum(player)
 	if not player then
-		return self.player:getHandcardNum()
+		global_room:writeToConsole(debug.traceback())
+		return 0
 	else
 		local cards = player:getHandcards()
 		for _, id in sgs.qlist(player:getPile("wooden_ox")) do

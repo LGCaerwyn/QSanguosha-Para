@@ -88,7 +88,7 @@ Engine::Engine()
 
     _loadMiniScenarios();
     _loadModScenarios();
-    m_customScene = new CustomScenario();
+    m_customScene = new CustomScenario;
 
     if (!DoLuaScript(lua, "lua/sanguosha.lua")) exit(1);
 
@@ -132,6 +132,7 @@ void Engine::addTranslationEntry(const char *key, const char *value) {
 
 Engine::~Engine() {
     lua_close(lua);
+    delete m_customScene;
 #ifdef AUDIO_SUPPORT
     Audio::quit();
 #endif
@@ -671,7 +672,7 @@ QStringList Engine::getChattingEasyTexts() const{
     return easy_texts;
 }
 
-QString Engine::getSetupString() const{
+QStringList Engine::getSetupString() const{
     int timeout = Config.OperationNoLimit ? 0 : Config.OperationTimeout;
     QString flags;
     if (Config.RandomSeat)
@@ -718,7 +719,7 @@ QString Engine::getSetupString() const{
                 << Sanguosha->getBanPackages().join("+")
                 << flags;
 
-    return setup_items.join(":");
+    return setup_items;
 }
 
 QMap<QString, QString> Engine::getAvailableModes() const{

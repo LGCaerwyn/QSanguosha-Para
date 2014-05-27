@@ -262,7 +262,6 @@ public:
     ServerPlayer(Room *room);
 
     void setSocket(ClientSocket *socket);
-    void invoke(const char *method, const char *arg = ".");
     QString reportHeader() const;
     void drawCard(const Card *card);
     Room *getRoom() const;
@@ -372,6 +371,7 @@ public:
                         // judgement!!! It will not accurately reflect the real reason.
     QString m_skillName; // skill that triggers movement of the cards, such as "longdang", "dimeng"
     QString m_eventName; // additional arg such as "lebusishu" on top of "S_REASON_JUDGE"
+    QVariant m_extraData; // additional data and will not be parsed to clients
 
     CardMoveReason();
     CardMoveReason(int moveReason, char *playerId);
@@ -492,7 +492,7 @@ struct CardUseStruct {
         CARD_USE_REASON_PLAY = 0x01,
         CARD_USE_REASON_RESPONSE = 0x02,
         CARD_USE_REASON_RESPONSE_USE = 0x12
-    } m_reason;
+    };
 
     CardUseStruct();
     CardUseStruct(const Card *card, ServerPlayer *from, QList<ServerPlayer *> to, bool isOwnerUse = true);
@@ -581,6 +581,7 @@ struct JudgeStruct {
     bool good;
     QString reason;
     bool time_consuming;
+    ServerPlayer *retrial_by_response; // record whether the current judge card is provided by a response retrial
 };
 
 typedef JudgeStruct *JudgeStar;
@@ -613,6 +614,7 @@ struct CardResponseStruct {
     const Card *m_card;
     ServerPlayer *m_who;
     bool m_isUse;
+    bool m_isRetrial;
     bool m_isHandcard;
 };
 
@@ -683,6 +685,7 @@ enum TriggerEvent {
     JinkEffect,
 
     CardAsked,
+    PreCardResponded,
     CardResponded,
     BeforeCardsMove, // sometimes we need to record cards before the move
     CardsMoveOneTime,
@@ -885,7 +888,7 @@ public:
     QStringList getExtensions() const;
     QStringList getKingdoms() const;
     QColor getKingdomColor(const char *kingdom) const;
-    QString getSetupString() const;
+    QStringList getSetupString() const;
 
     QMap<QString, QString> getAvailableModes() const;
     QString getModeName(const char *mode) const;
@@ -992,7 +995,6 @@ class QThread: public QObject {
 
 struct LogMessage {
     LogMessage();
-    QString toString() const;
 
     QString type;
     ServerPlayer *from;
@@ -1058,7 +1060,7 @@ public:
     void setCardFlag(int card_id, const char *flag, ServerPlayer *who = NULL);
     void clearCardFlag(const Card *card, ServerPlayer *who = NULL);
     void clearCardFlag(int card_id, ServerPlayer *who = NULL);
-    void useCard(const CardUseStruct &card_use, bool add_history = true);
+    void useCard(const CardUseStruct &card_use, bool add_history = false);
     void damage(const DamageStruct &data);
     void loseHp(ServerPlayer *victim, int lose = 1);
     void loseMaxHp(ServerPlayer *victim, int lose = 1);
@@ -1093,7 +1095,7 @@ public:
     void doLightbox(const char *lightboxName, int duration = 2000, int pixelSize = 0);
     void doAnimate(int type, const char *arg1 = NULL, const char *arg2 = NULL, QList<ServerPlayer *> players = QList<ServerPlayer *>());
 
-    bool notifyMoveCards(bool isLostPhase, QList<CardsMoveStruct> move, bool forceVisible, QList<ServerPlayer *> players = QList<ServerPlayer *>());
+    bool notifyMoveCards(bool isLostPhase, QList<CardsMoveStruct> &cards_moves, bool forceVisible, QList<ServerPlayer *> players = QList<ServerPlayer *>());
     bool notifyUpdateCard(ServerPlayer *player, int cardId, const Card *newCard);
     bool broadcastUpdateCard(const QList<ServerPlayer *> &players, int cardId, const Card *newCard);
     bool notifyResetCard(ServerPlayer *player, int cardId);
@@ -1108,7 +1110,7 @@ public:
     void adjustSeats();
     void swapPile();
     QList<int> getDiscardPile();
-    QList<int> getDrawPile();
+    QList<int> &getDrawPile();
     int getCardFromPile(const char *card_name);
     ServerPlayer *findPlayer(const char *general_name, bool include_dead = false) const;
     ServerPlayer *findPlayerBySkillName(const char *skill_name) const;

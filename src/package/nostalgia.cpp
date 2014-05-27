@@ -268,7 +268,7 @@ public:
                     room->broadcastSkillInvoke(objectName(), 1);
                     Slash *slash = new Slash(Card::NoSuit, 0);
                     slash->setSkillName(objectName());
-                    room->useCard(CardUseStruct(slash, lingtong, target), false);
+                    room->useCard(CardUseStruct(slash, lingtong, target));
                 } else if (choice == "damage") {
                     room->broadcastSkillInvoke(objectName(), 2);
 
@@ -319,7 +319,7 @@ public:
                 ids << card1 << card2;
                 bool diff = (Sanguosha->getCard(card1)->getColor() != Sanguosha->getCard(card2)->getColor());
 
-                CardsMoveStruct move, move2;
+                CardsMoveStruct move;
                 move.card_ids = ids;
                 move.reason = CardMoveReason(CardMoveReason::S_REASON_TURNOVER, shuangying->objectName(), "fuhun", QString());
                 move.to_place = Player::PlaceTable;
@@ -1096,11 +1096,12 @@ public:
         room->sendLog(log);
         room->broadcastSkillInvoke(objectName());
         room->doLightbox("$NosBaijiangAnimate", 5000);
-        room->addPlayerMark(zhonghui, "nosbaijiang");
 
+        room->setPlayerMark(zhonghui, "nosbaijiang", 1);
         if (room->changeMaxHpForAwakenSkill(zhonghui, 1)) {
             room->recover(zhonghui, RecoverStruct(zhonghui));
-            room->handleAcquireDetachSkills(zhonghui, "-noszhenggong|-nosquanji|nosyexin");
+            if (zhonghui->getMark("nosbaijiang") == 1)
+                room->handleAcquireDetachSkills(zhonghui, "-noszhenggong|-nosquanji|nosyexin");
         }
 
         return false;
@@ -1246,8 +1247,8 @@ public:
         room->broadcastSkillInvoke(objectName());
         room->doLightbox("$NosZiliAnimate", 5000);
 
-        room->addPlayerMark(zhonghui, "noszili");
-        if (room->changeMaxHpForAwakenSkill(zhonghui))
+        room->setPlayerMark(zhonghui, "noszili", 1);
+        if (room->changeMaxHpForAwakenSkill(zhonghui) && zhonghui->getMark("noszili") == 1)
             room->acquireSkill(zhonghui, "nospaiyi");
 
         return false;

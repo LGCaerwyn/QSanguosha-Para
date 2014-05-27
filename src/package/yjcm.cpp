@@ -636,7 +636,7 @@ void MingceCard::onEffect(const CardEffectStruct &effect) const{
         if (effect.to->canSlash(target, NULL, false)) {
             Slash *slash = new Slash(Card::NoSuit, 0);
             slash->setSkillName("_mingce");
-            room->useCard(CardUseStruct(slash, effect.to, target), false);
+            room->useCard(CardUseStruct(slash, effect.to, target));
         }
     } else if (choice == "draw") {
         effect.to->drawCards(1, "mingce");
@@ -990,13 +990,14 @@ public:
         room->broadcastSkillInvoke(objectName());
         room->doLightbox("$ZiliAnimate", 4000);
 
-        room->addPlayerMark(zhonghui, "zili");
+        room->setPlayerMark(zhonghui, "zili", 1);
         if (room->changeMaxHpForAwakenSkill(zhonghui)) {
             if (zhonghui->isWounded() && room->askForChoice(zhonghui, objectName(), "recover+draw") == "recover")
                 room->recover(zhonghui, RecoverStruct(zhonghui));
             else
                 room->drawCards(zhonghui, 2, objectName());
-            room->acquireSkill(zhonghui, "paiyi");
+            if (zhonghui->getMark("zili") == 1)
+                room->acquireSkill(zhonghui, "paiyi");
         }
 
         return false;

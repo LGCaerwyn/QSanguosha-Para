@@ -77,7 +77,7 @@ RoomScene::RoomScene(QMainWindow *main_window)
     guhuo_log = QString();
 
     // create photos
-    for (int i = 0; i < player_count - 1;i++) {
+    for (int i = 0; i < player_count - 1; i++) {
         Photo *photo = new Photo;
         photos << photo;
         addItem(photo);
@@ -133,6 +133,8 @@ RoomScene::RoomScene(QMainWindow *main_window)
     connect(action, SIGNAL(triggered()), general_changer, SLOT(exec()));
     connect(general_changer, SIGNAL(general_chosen(QString)), this, SLOT(changeGeneral(QString)));
     to_change = NULL;
+
+    m_add_robot_menu = new QMenu(main_window);
 
     // do signal-slot connections
     connect(ClientInstance, SIGNAL(player_added(ClientPlayer *)), SLOT(addPlayer(ClientPlayer *)));
@@ -317,29 +319,30 @@ RoomScene::RoomScene(QMainWindow *main_window)
     updateRoles(roles);
 
     add_robot = NULL;
-    fill_robots = NULL;
+    start_game = NULL;
     return_to_main_menu = NULL;
     if (ServerInfo.EnableAI) {
         control_panel = addRect(0, 0, 500, 150, Qt::NoPen);
         control_panel->hide();
 
-        add_robot = new Button(tr("Add a robot"));
+        add_robot = new Button(tr("Add robots"));
         add_robot->setParentItem(control_panel);
         add_robot->setTransform(QTransform::fromTranslate(-add_robot->boundingRect().width() / 2, -add_robot->boundingRect().height() / 2), true);
-        add_robot->setPos(0, -2 * add_robot->boundingRect().height() - 20);
-
-        fill_robots = new Button(tr("Fill robots"));
-        fill_robots->setParentItem(control_panel);
-        fill_robots->setTransform(QTransform::fromTranslate(-fill_robots->boundingRect().width() / 2, -fill_robots->boundingRect().height() / 2), true);
         add_robot->setPos(0, -add_robot->boundingRect().height() - 10);
+
+        start_game = new Button(tr("Start new game"));
+        start_game->setParentItem(control_panel);
+        start_game->setToolTip(tr("Fill robots and start a new game"));
+        start_game->setTransform(QTransform::fromTranslate(-start_game->boundingRect().width() / 2, -start_game->boundingRect().height() / 2), true);
+        start_game->setPos(0, 0);
 
         return_to_main_menu = new Button(tr("Return to main menu"));
         return_to_main_menu->setParentItem(control_panel);
         return_to_main_menu->setTransform(QTransform::fromTranslate(-return_to_main_menu->boundingRect().width() / 2, -return_to_main_menu->boundingRect().height() / 2), true);
         return_to_main_menu->setPos(0, add_robot->boundingRect().height() + 10);
 
-        connect(add_robot, SIGNAL(clicked()), ClientInstance, SLOT(addRobot()));
-        connect(fill_robots, SIGNAL(clicked()), ClientInstance, SLOT(fillRobots()));
+        connect(add_robot, SIGNAL(clicked()), this, SLOT(addRobot()));
+        connect(start_game, SIGNAL(clicked()), this, SLOT(fillRobots()));
         connect(return_to_main_menu, SIGNAL(clicked()), this, SIGNAL(return_to_start()));
         connect(Self, SIGNAL(owner_changed(bool)), this, SLOT(showOwnerButtons(bool)));
     } else {
@@ -377,6 +380,10 @@ RoomScene::RoomScene(QMainWindow *main_window)
     pindian_to_card = NULL;
 
     _m_bgEnabled = false;
+}
+
+RoomScene::~RoomScene() {
+    QSanSkinFactory::destroyInstance();
 }
 
 void RoomScene::handleGameEvent(const Json::Value &arg) {
@@ -1288,9 +1295,11 @@ void RoomScene::keyReleaseEvent(QKeyEvent *event) {
     case Qt::Key_F7: {
             if (control_is_down) {
                 if (add_robot && add_robot->isVisible())
-                    ClientInstance->addRobot();
-            } else if (fill_robots && fill_robots->isVisible())
-                ClientInstance->fillRobots();
+                    ClientInstance->addRobot(1);
+            } else if (start_game && start_game->isVisible()) {
+                int left = Sanguosha->getPlayerCount(ServerInfo.GameMode) - ClientInstance->getPlayers().length();
+                ClientInstance->addRobot(left);
+            }
             break;
         }
     case Qt::Key_F12: {
@@ -2780,7 +2789,7 @@ void RoomScene::hideAvatars() {
 
 void RoomScene::startInXs() {
     if (add_robot) add_robot->hide();
-    if (fill_robots) fill_robots->hide();
+    if (start_game) start_game->hide();
     if (return_to_main_menu) return_to_main_menu->hide();
 }
 
@@ -2792,8 +2801,9 @@ void RoomScene::changeHp(const QString &who, int delta, DamageStruct::Nature nat
     else
         dashboard->update();
 
-    QString hp =  QString::number(ClientInstance->getPlayer(who)->getHp() + delta);
-    QString maxhp = QString::number(ClientInstance->getPlayer(who)->getMaxHp());
+    ClientPlayer *player = ClientInstance->getPlayer(who);
+    QString hp =  QString::number(player->getHp() + delta);
+    QString maxhp = QString::number(player->getMaxHp());
     if (delta < 0) {
         if (losthp) {
             Sanguosha->playSystemAudioEffect("hplost");
@@ -2825,7 +2835,7 @@ void RoomScene::changeHp(const QString &who, int delta, DamageStruct::Nature nat
             doAnimation(S_ANIMATE_LIGHTNING, QStringList() << who);
     } else {
         QString type = "#Recover";
-        QString from_general = ClientInstance->getPlayer(who)->objectName();
+        QString from_general = player->objectName();
         QString n = QString::number(delta);
 
         log_box->appendLog(type, from_general, QStringList(), QString(), n);
@@ -2836,6 +2846,13 @@ void RoomScene::changeHp(const QString &who, int delta, DamageStruct::Nature nat
 void RoomScene::changeMaxHp(const QString &who, int delta) {
     if (delta < 0)
         Sanguosha->playSystemAudioEffect("maxhplost");
+
+    ClientPlayer *player = ClientInstance->getPlayer(who);
+    QString hp =  QString::number(player->getHp());
+    QString maxhp = QString::number(player->getMaxHp());
+
+    QString from_general = player->objectName();
+    log_box->appendLog("#GetHp", from_general, QStringList(), QString(), hp, maxhp);
 }
 
 void RoomScene::onStandoff() {
@@ -3168,8 +3185,8 @@ void RoomScene::fillTable(QTableWidget *table, const QList<const ClientPlayer *>
     table->setRowCount(players.length());
     table->setEditTriggers(QAbstractItemView::NoEditTriggers);
 
-    RecAnalysis *record = new RecAnalysis(ClientInstance->getReplayPath());
-    QMap<QString, PlayerRecordStruct *> record_map = record->getRecordMap();
+    RecAnalysis record(ClientInstance->getReplayPath());
+    QMap<QString, PlayerRecordStruct *> record_map = record.getRecordMap();
 
     static QStringList labels;
     if (labels.isEmpty()) {
@@ -4428,8 +4445,37 @@ void RoomScene::pause() {
             return;
     }
     bool paused = pausing_text->isVisible();
-    QString message = QString("pause %1").arg((paused ? "false" : "true"));
-    ClientInstance->request(message);
+    ClientInstance->notifyServer(S_COMMAND_PAUSE, !paused);
+}
+
+void RoomScene::addRobot() {
+    QMenu *menu = m_add_robot_menu;
+    menu->clear();
+    menu->setTitle(tr("Add robots"));
+
+    int left = Sanguosha->getPlayerCount(ServerInfo.GameMode) - ClientInstance->getPlayers().length();
+    for (int i = 1; i <= left; i++) {
+        QAction *action = menu->addAction(tr("%1 robots").arg(i));
+        action->setData(i);
+        connect(action, SIGNAL(triggered()), this, SLOT(doAddRobotAction()));
+    }
+
+    QPointF posf = QCursor::pos();
+    menu->popup(QPoint(posf.x(), posf.y()));
+}
+
+void RoomScene::doAddRobotAction() {
+    QAction *action = qobject_cast<QAction *>(sender());
+    int num = 1;
+    if (action)
+        num = action->data().toInt();
+
+    ClientInstance->addRobot(num);
+}
+
+void RoomScene::fillRobots() {
+    int left = Sanguosha->getPlayerCount(ServerInfo.GameMode) - ClientInstance->getPlayers().length();
+    ClientInstance->addRobot(left);
 }
 
 void RoomScene::updateVolumeConfig() {
