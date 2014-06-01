@@ -133,8 +133,7 @@ MainWindow::~MainWindow() {
     view->deleteLater();
     if (scene)
         scene->deleteLater();
-    if (ClientInstance)
-        delete ClientInstance;
+    QSanSkinFactory::destroyInstance();
 }
 
 void MainWindow::gotoScene(QGraphicsScene *scene) {
@@ -337,10 +336,6 @@ void MainWindow::gotoStartScene() {
         delete Self;
         Self = NULL;
     }
-
-    QList<Server *> servers = findChildren<Server *>();
-    if (!servers.isEmpty())
-        servers.first()->deleteLater();
 
     StartScene *start_scene = new StartScene;
 
