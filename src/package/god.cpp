@@ -241,6 +241,13 @@ public:
     virtual bool isEnabledAtPlay(const Player *player) const{
         return !player->hasUsed("GongxinCard");
     }
+
+    virtual int getEffectIndex(const ServerPlayer *player, const Card *) const{
+        int index = qrand() % 2 + 1;
+        if (!player->hasInnateSkill(objectName()) && player->getMark("qinxue") > 0)
+            index += 2;
+        return index;
+    }
 };
 
 void YeyanCard::damage(ServerPlayer *shenzhouyu, ServerPlayer *target, int point) const{
@@ -590,9 +597,9 @@ void ShenfenCard::use(Room *room, ServerPlayer *shenlvbu, QList<ServerPlayer *> 
         }
 
         foreach (ServerPlayer *player, players) {
-            DummyCard *card = player->wholeHandCards();
+            bool delay = !player->isKongcheng();
             room->askForDiscard(player, "shenfen", 4, 4);
-            if (card != NULL)
+            if (delay)
                 room->getThread()->delay();
         }
 

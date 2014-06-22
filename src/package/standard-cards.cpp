@@ -10,7 +10,6 @@ Slash::Slash(Suit suit, int number): BasicCard(suit, number)
 {
     setObjectName("slash");
     nature = DamageStruct::Normal;
-    drank = 0;
     specific_assignee = QStringList();
 }
 
@@ -175,8 +174,12 @@ void Slash::onUse(Room *room, const CardUseStruct &card_use) const{
         if (!name.isEmpty()) {
             player->setFlags("-Global_MoreSlashInOneTurn");
             int index = qrand() % 2 + 1;
-            if (name == "paoxiao" && !player->hasInnateSkill("paoxiao") && player->hasSkill("baobian"))
-                index += 2;
+            if (name == "paoxiao") {
+                if (!player->hasInnateSkill("paoxiao") && player->hasSkill("baobian"))
+                    index += 4;
+                else if (Player::isNostalGeneral(player, "zhangfei"))
+                    index += 2;
+            }
             room->broadcastSkillInvoke(name, index);
             room->notifySkillInvoked(player, name);
         }
@@ -250,24 +253,23 @@ void Slash::onUse(Room *room, const CardUseStruct &card_use) const{
     else
         room->setEmotion(player, "killer");
 
+    if (use.from->getMark("drank") > 0) {
+        room->setCardFlag(use.card, "drank");
+        use.card->tag["drank"] = use.from->getMark("drank");
+        room->setPlayerMark(use.from, "drank", 0);
+    }
+
     BasicCard::onUse(room, use);
 }
 
 void Slash::onEffect(const CardEffectStruct &card_effect) const{
-    Room *room = card_effect.from->getRoom();
-    if (card_effect.from->getMark("drank") > 0) {
-        room->setCardFlag(this, "drank");
-        this->drank = card_effect.from->getMark("drank");
-        room->setPlayerMark(card_effect.from, "drank", 0);
-    }
-
     SlashEffectStruct effect;
     effect.from = card_effect.from;
     effect.nature = nature;
     effect.slash = this;
 
     effect.to = card_effect.to;
-    effect.drank = this->drank;
+    effect.drank = this->tag["drank"].toInt();
     effect.nullified = card_effect.nullified;
 
     QVariantList jink_list = effect.from->tag["Jink_" + toString()].toList();
@@ -277,7 +279,7 @@ void Slash::onEffect(const CardEffectStruct &card_effect) const{
     else
         effect.from->tag["Jink_" + toString()] = QVariant::fromValue(jink_list);
 
-    room->slashEffect(effect);
+    effect.from->getRoom()->slashEffect(effect);
 }
 
 bool Slash::targetsFeasible(const QList<const Player *> &targets, const Player *) const{

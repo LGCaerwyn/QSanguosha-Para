@@ -640,9 +640,11 @@ void NosRenxinCard::use(Room *room, ServerPlayer *player, QList<ServerPlayer *> 
     if (!who) return;
 
     room->broadcastSkillInvoke("renxin");
+    DummyCard *handcards = player->wholeHandCards();
     player->turnOver();
     CardMoveReason reason(CardMoveReason::S_REASON_GIVE, player->objectName(), who->objectName(), "nosrenxin", QString());
-    room->obtainCard(who, player->wholeHandCards(), reason, false);
+    room->obtainCard(who, handcards, reason, false);
+    delete handcards;
     room->recover(who, RecoverStruct(player));
 }
 
@@ -1356,8 +1358,8 @@ public:
             if (room->getCardPlace(id) != Player::PlaceTable) return;
         }
         QVariant data = QVariant::fromValue(damage);
-        if (room->askForSkillInvoke(caocao, "nosjianxiong", data)) {
-            room->broadcastSkillInvoke("jianxiong");
+        if (room->askForSkillInvoke(caocao, objectName(), data)) {
+            room->broadcastSkillInvoke(objectName());
             caocao->obtainCard(card);
         }
     }
@@ -1373,7 +1375,7 @@ public:
         Room *room = simayi->getRoom();
         QVariant data = QVariant::fromValue(from);
         if (from && !from->isNude() && room->askForSkillInvoke(simayi, "nosfankui", data)) {
-            room->broadcastSkillInvoke("fankui");
+            room->broadcastSkillInvoke(objectName());
             int card_id = room->askForCardChosen(simayi, from, "he", "nosfankui");
             CardMoveReason reason(CardMoveReason::S_REASON_EXTRACTION, simayi->objectName());
             room->obtainCard(simayi, Sanguosha->getCard(card_id),
@@ -1400,7 +1402,7 @@ public:
         QString prompt = prompt_list.join(":");
         const Card *card = room->askForCard(player, "." , prompt, data, Card::MethodResponse, judge->who, true);
         if (card) {
-            room->broadcastSkillInvoke("guicai");
+            room->broadcastSkillInvoke(objectName());
             room->retrial(card, player, judge, objectName());
         }
 
@@ -1532,7 +1534,7 @@ public:
     virtual int getDrawNum(ServerPlayer *xuchu, int n) const{
         Room *room = xuchu->getRoom();
         if (room->askForSkillInvoke(xuchu, objectName())) {
-            room->broadcastSkillInvoke("luoyi");
+            room->broadcastSkillInvoke(objectName());
             xuchu->setFlags(objectName());
             return n - 1;
         } else
@@ -1682,7 +1684,7 @@ public:
         foreach (ServerPlayer *p, use.to) {
             if (!player->isAlive()) break;
             if (player->askForSkillInvoke(objectName(), QVariant::fromValue(p))) {
-                room->broadcastSkillInvoke("tieji");
+                room->broadcastSkillInvoke(objectName());
 
                 p->setFlags("NosTiejiTarget"); // For AI
 
@@ -1752,12 +1754,10 @@ public:
 };
 
 NosKurouCard::NosKurouCard() {
-    mute = true;
     target_fixed = true;
 }
 
 void NosKurouCard::use(Room *room, ServerPlayer *source, QList<ServerPlayer *> &) const{
-    room->broadcastSkillInvoke("kurou");
     room->loseHp(source);
     if (source->isAlive())
         room->drawCards(source, 2, "noskurou");
@@ -1782,7 +1782,7 @@ public:
     virtual int getDrawNum(ServerPlayer *zhouyu, int n) const{
         Room *room = zhouyu->getRoom();
         if (room->askForSkillInvoke(zhouyu, objectName())) {
-            room->broadcastSkillInvoke("yingzi", qrand() % 2 + 1);
+            room->broadcastSkillInvoke("nosyingzi");
             return n + 1;
         } else
             return n;
@@ -1790,14 +1790,12 @@ public:
 };
 
 NosFanjianCard::NosFanjianCard() {
-    mute = true;
 }
 
 void NosFanjianCard::onEffect(const CardEffectStruct &effect) const{
     ServerPlayer *zhouyu = effect.from;
     ServerPlayer *target = effect.to;
     Room *room = zhouyu->getRoom();
-    room->broadcastSkillInvoke("fanjian");
 
     int card_id = zhouyu->getRandomHandCardId();
     const Card *card = Sanguosha->getCard(card_id);
