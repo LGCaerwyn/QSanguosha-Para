@@ -255,7 +255,7 @@ void Slash::onUse(Room *room, const CardUseStruct &card_use) const{
 
     if (use.from->getMark("drank") > 0) {
         room->setCardFlag(use.card, "drank");
-        use.card->tag["drank"] = use.from->getMark("drank");
+        use.card->setTag("drank", use.from->getMark("drank"));
         room->setPlayerMark(use.from, "drank", 0);
     }
 
@@ -1351,6 +1351,7 @@ WoodenOx::WoodenOx(Suit suit, int number)
 
 void WoodenOx::onUninstall(ServerPlayer *player) const{
     player->getRoom()->addPlayerHistory(player, "WoodenOxCard", 0);
+    Treasure::onUnistall(player);
 }
 
 StandardCardPackage::StandardCardPackage()
