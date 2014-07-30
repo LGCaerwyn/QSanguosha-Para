@@ -16,7 +16,7 @@ public:
             CardResponseStruct resp = data.value<CardResponseStruct>();
             if (resp.m_card->getSkillName() == "longdan"
                 && resp.m_who != NULL && !resp.m_who->isKongcheng()) {
-                QVariant data = QVariant::fromValue((PlayerStar)resp.m_who);
+                QVariant data = QVariant::fromValue(resp.m_who);
                 if (player->askForSkillInvoke(objectName(), data)) {
                     room->broadcastSkillInvoke("chongzhen", 1);
                     int card_id = room->askForCardChosen(player, resp.m_who, "h", objectName());
@@ -29,7 +29,7 @@ public:
             if (use.card->getSkillName() == "longdan") {
                 foreach (ServerPlayer *p, use.to) {
                     if (p->isKongcheng()) continue;
-                    QVariant data = QVariant::fromValue((PlayerStar)p);
+                    QVariant data = QVariant::fromValue(p);
                     p->setFlags("ChongzhenTarget");
                     bool invoke = player->askForSkillInvoke(objectName(), data);
                     p->setFlags("-ChongzhenTarget");
@@ -337,7 +337,7 @@ public:
             if (numbers.contains(card->getNumber())) {
                 zuixiangDone = true;
                 break;
-            }            
+            }
             numbers.insert(card->getNumber());
         }
         if (zuixiangDone) {
@@ -526,7 +526,7 @@ public:
 
     virtual bool trigger(TriggerEvent triggerEvent, Room *room, ServerPlayer *player, QVariant &data) const{
         if (triggerEvent == JinkEffect) {
-            CardStar jink = data.value<CardStar>();
+            const Card *jink = data.value<const Card *>();
             ServerPlayer *bgm_zhangfei = room->findPlayerBySkillName(objectName());
             if (bgm_zhangfei && bgm_zhangfei->isAlive() && player->hasFlag(objectName()) && jink->getSuit() != Card::Heart) {
                 LogMessage log;
@@ -569,7 +569,7 @@ public:
     }
 
     virtual bool trigger(TriggerEvent, Room *room, ServerPlayer *, QVariant &data) const{
-        PindianStar pindian = data.value<PindianStar>();
+        PindianStruct *pindian = data.value<PindianStruct *>();
         if (pindian->reason != "dahe" || !pindian->from->hasSkill(objectName())
             || room->getCardPlace(pindian->to_card->getEffectiveId()) != Player::PlaceTable)
             return false;
@@ -644,10 +644,10 @@ public:
     virtual bool trigger(TriggerEvent triggerEvent, Room *room, ServerPlayer *player, QVariant &data) const{
         if (triggerEvent == TrickCardCanceling) {
             CardEffectStruct effect = data.value<CardEffectStruct>();
-            if (effect.from && effect.from->tag["TanhuInvoke"].value<PlayerStar>() != NULL
+            if (effect.from && effect.from->tag["TanhuInvoke"].value<ServerPlayer *>() != NULL
                 && effect.to && effect.to->hasFlag("TanhuTarget"))
                 return true;
-        } else if (player->tag["TanhuInvoke"].value<PlayerStar>() != NULL) {
+        } else if (player->tag["TanhuInvoke"].value<ServerPlayer *>() != NULL) {
             if (triggerEvent == EventPhaseChanging) {
                 PhaseChangeStruct change = data.value<PhaseChangeStruct>();
                 if (change.to != Player::NotActive)
@@ -658,7 +658,7 @@ public:
                     return false;
             }
 
-            ServerPlayer *target = player->tag["TanhuInvoke"].value<PlayerStar>();
+            ServerPlayer *target = player->tag["TanhuInvoke"].value<ServerPlayer *>();
 
             target->setFlags("-TanhuTarget");
             room->setFixedDistance(player, target, -1);
@@ -710,13 +710,7 @@ public:
             if (move.from == player && player->isAlive() && player->hasSkill(objectName(), true)
                 && player->getMark("@wu") > 0 && player->getHandcardNum() <= 2) {
                 room->broadcastSkillInvoke(objectName());
-
-                LogMessage log;
-                log.type = "#TriggerSkill";
-                log.from = player;
-                log.arg = "mouduan";
-                room->sendLog(log);
-                room->notifySkillInvoked(player, objectName());
+                room->sendCompulsoryTriggerLog(player, objectName());
 
                 player->loseMark("@wu");
                 player->gainMark("@wen");
@@ -1178,7 +1172,7 @@ public:
 
             Config.AIDelay = ai_delay;
 
-            QVariant ai_data = QVariant::fromValue((PlayerStar)ganning);
+            QVariant ai_data = QVariant::fromValue(ganning);
             const Card *card = room->askForCard(target, "Jink", "@junwei-show", ai_data, Card::MethodNone);
             if (card) {
                 room->showCard(target, card->getEffectiveId());
@@ -1273,7 +1267,7 @@ public:
             if (xuehen) xuehen_trigger = qobject_cast<const TriggerSkill *>(xuehen);
             if (!xuehen_trigger) return false;
 
-            QVariant data = QVariant::fromValue((PlayerStar)player);
+            QVariant data = QVariant::fromValue(player);
             foreach (ServerPlayer *xiahou, room->getAllPlayers()) {
                 if (TriggerSkill::triggerable(xiahou) && xiahou->getMark("@fenyong") > 0) {
                     room->setPlayerMark(xiahou, "@fenyong", 0);
@@ -1311,14 +1305,9 @@ public:
     }
 
     virtual bool trigger(TriggerEvent, Room *room, ServerPlayer *xiahou, QVariant &data) const{
-        LogMessage log;
-        log.from = xiahou;
-        log.arg = objectName();
-        log.type = "#TriggerSkill";
-        room->sendLog(log);
-        room->notifySkillInvoked(xiahou, objectName());
+        room->sendCompulsoryTriggerLog(xiahou, objectName());
 
-        PlayerStar player = data.value<PlayerStar>();
+        ServerPlayer *player = data.value<ServerPlayer *>();
         QList<ServerPlayer *> targets;
         foreach (ServerPlayer *p, room->getOtherPlayers(xiahou))
             if (xiahou->canSlash(p, NULL, false))
@@ -1566,7 +1555,7 @@ public:
                 }
             }
         } else if (TriggerSkill::triggerable(simazhao) && triggerEvent == AskForRetrial) {
-            JudgeStar judge = data.value<JudgeStar>();
+            JudgeStruct *judge = data.value<JudgeStruct *>();
             if (judge->reason != objectName() || simazhao->isKongcheng())
                 return false;
 
@@ -1579,7 +1568,7 @@ public:
             if (card)
                 room->retrial(card, simazhao, judge, objectName());
         } else if (triggerEvent == FinishJudge) {
-            JudgeStar judge = data.value<JudgeStar>();
+            JudgeStruct *judge = data.value<JudgeStruct *>();
             if (judge->reason != objectName()) return false;
             judge->pattern = QString::number(int(judge->card->getSuit()));
         }
@@ -2013,12 +2002,7 @@ public:
     virtual bool trigger(TriggerEvent triggerEvent, Room *room, ServerPlayer *gongsunzan, QVariant &data) const{
         if (triggerEvent == EventPhaseStart) {
             if (gongsunzan->getPhase() == Player::Start && gongsunzan->getPile("retinue").length() > 0) {
-                LogMessage log;
-                log.from = gongsunzan;
-                log.arg = objectName();
-                log.type = "#TriggerSkill";
-                room->sendLog(log);
-                room->notifySkillInvoked(gongsunzan, objectName());
+                room->sendCompulsoryTriggerLog(gongsunzan, objectName());
 
                 int n = gongsunzan->getPile("retinue").length();
                 room->setPlayerMark(gongsunzan, "tuqi_dist", n);

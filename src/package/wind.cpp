@@ -32,7 +32,7 @@ public:
     }
 
     virtual bool trigger(TriggerEvent, Room *room, ServerPlayer *player, QVariant &data) const{
-        JudgeStar judge = data.value<JudgeStar>();
+        JudgeStruct *judge = data.value<JudgeStruct *>();
 
         QStringList prompt_list;
         prompt_list << "@guidao-card" << judge->who->objectName()
@@ -62,7 +62,7 @@ public:
 
     virtual bool trigger(TriggerEvent triggerEvent, Room *room, ServerPlayer *zhangjiao, QVariant &data) const{
         if (triggerEvent == CardResponded && TriggerSkill::triggerable(zhangjiao)) {
-            CardStar card_star = data.value<CardResponseStruct>().m_card;
+            const Card *card_star = data.value<CardResponseStruct>().m_card;
             if (card_star->isKindOf("Jink")) {
                 ServerPlayer *target = room->askForPlayerChosen(zhangjiao, room->getAlivePlayers(), objectName(), "leiji-invoke", true, true);
                 if (target) {
@@ -305,7 +305,7 @@ int Jushou::getJushouDrawNum(ServerPlayer *) const{
 bool Jushou::onPhaseChange(ServerPlayer *target) const{
     if (target->getPhase() == Player::Finish) {
         Room *room = target->getRoom();
-        if (room->askForSkillInvoke(target, objectName())) {          
+        if (room->askForSkillInvoke(target, objectName())) {
             room->broadcastSkillInvoke(objectName());
             target->drawCards(getJushouDrawNum(target), objectName());
             target->turnOver();
@@ -426,13 +426,7 @@ public:
         player->tag["InvokeKuanggu"] = false;
         if (invoke && player->isWounded()) {
             room->broadcastSkillInvoke(objectName());
-
-            LogMessage log;
-            log.type = "#TriggerSkill";
-            log.from = player;
-            log.arg = objectName();
-            room->sendLog(log);
-            room->notifySkillInvoked(player, objectName());
+            room->sendCompulsoryTriggerLog(player, objectName());
 
             room->recover(player, RecoverStruct(player, NULL, damage.damage));
         }
@@ -472,12 +466,7 @@ public:
 
         if (zhoutai->getHp() > 0) return false;
         room->broadcastSkillInvoke(objectName());
-        LogMessage log;
-        log.type = "#TriggerSkill";
-        log.from = zhoutai;
-        log.arg = objectName();
-        room->sendLog(log);
-        room->notifySkillInvoked(zhoutai, objectName());
+        room->sendCompulsoryTriggerLog(zhoutai, objectName());
 
         int id = room->drawCard();
         int num = Sanguosha->getCard(id)->getNumber();
@@ -668,7 +657,7 @@ void GuhuoDialog::popup() {
 }
 
 void GuhuoDialog::selectCard(QAbstractButton *button) {
-    CardStar card = map.value(button->objectName());
+    const Card *card = map.value(button->objectName());
     Self->tag[object_name] = QVariant::fromValue(card);
     if (button->objectName().contains("slash")) {
         if (objectName() == "guhuo")
@@ -871,7 +860,7 @@ bool GuhuoCard::targetFilter(const QList<const Player *> &targets, const Player 
         return false;
     }
 
-    CardStar card = Self->tag.value("guhuo").value<CardStar>();
+    const Card *card = Self->tag.value("guhuo").value<const Card *>();
     return card && card->targetFilter(targets, to_select, Self) && !Self->isProhibited(to_select, card, targets);
 }
 
@@ -885,7 +874,7 @@ bool GuhuoCard::targetFixed() const{
         return true;
     }
 
-    CardStar card = Self->tag.value("guhuo").value<CardStar>();
+    const Card *card = Self->tag.value("guhuo").value<const Card *>();
     return card && card->targetFixed();
 }
 
@@ -899,7 +888,7 @@ bool GuhuoCard::targetsFeasible(const QList<const Player *> &targets, const Play
         return true;
     }
 
-    CardStar card = Self->tag.value("guhuo").value<CardStar>();
+    const Card *card = Self->tag.value("guhuo").value<const Card *>();
     return card && card->targetsFeasible(targets, Self);
 }
 
@@ -949,14 +938,16 @@ const Card *GuhuoCard::validate(CardUseStruct &card_use) const{
         foreach (ServerPlayer *to, tos) {
             const ProhibitSkill *skill = room->isProhibited(card_use.from, to, use_card);
             if (skill) {
-                LogMessage log;
-                log.type = "#SkillAvoid";
-                log.from = to;
-                log.arg = skill->objectName();
-                log.arg2 = use_card->objectName();
-                room->sendLog(log);
+                if (skill->isVisible()) {
+                    LogMessage log;
+                    log.type = "#SkillAvoid";
+                    log.from = to;
+                    log.arg = skill->objectName();
+                    log.arg2 = use_card->objectName();
+                    room->sendLog(log);
 
-                room->broadcastSkillInvoke(skill->objectName());
+                    room->broadcastSkillInvoke(skill->objectName());
+                }
                 card_use.to.removeOne(to);
             }
         }
@@ -1069,7 +1060,7 @@ public:
             return card;
         }
 
-        CardStar c = Self->tag.value("guhuo").value<CardStar>();
+        const Card *c = Self->tag.value("guhuo").value<const Card *>();
         if (c) {
             GuhuoCard *card = new GuhuoCard;
             if (!c->objectName().contains("slash"))

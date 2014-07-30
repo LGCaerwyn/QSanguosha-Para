@@ -26,7 +26,7 @@ void MiniSceneRule::assign(QStringList &generals, QStringList &roles) const{
 
 bool MiniSceneRule::trigger(TriggerEvent triggerEvent, Room *room, ServerPlayer *player, QVariant &) const{
     if (triggerEvent == EventPhaseStart) {
-        if (player == room->getTag("Starter").value<PlayerStar>()) {
+        if (player == room->getTag("Starter").value<ServerPlayer *>()) {
             if (player->getPhase() == Player::Start) {
                 room->setTag("Round", room->getTag("Round").toInt() + 1);
 
@@ -207,7 +207,7 @@ bool MiniSceneRule::trigger(TriggerEvent triggerEvent, Room *room, ServerPlayer 
 
             str = this->players.at(i)["hand"];
             if (str != QString()) {
-                QStringList hands = str.split(",");               
+                QStringList hands = str.split(",");
                 DummyCard *dummy = new DummyCard(StringList2IntList(hands));
                 room->obtainCard(sp, dummy);
                 dummy->deleteLater();

@@ -66,7 +66,7 @@ public:
     inline QRect getFloatingArea() const{ return _m_floatingAreaRect; }
     inline void setSaveMeIcon(bool visible) { _m_saveMeIcon->setVisible(visible); }
     void setFloatingArea(QRect rect);
-    
+
     // repaintAll is different from refresh in that it recreates all controls and is
     // very costly. Avoid calling this except for changing skins or only once during
     // the initialization. If you just want to update the information displayed, call
@@ -119,7 +119,7 @@ protected:
     virtual QGraphicsItem *_getDeathIconParent() = 0;
     virtual QString getResourceKeyName() = 0;
 
-    void _createRoleComboBox();    
+    void _createRoleComboBox();
     void _updateProgressBar(); // a dirty function used by the class itself only.
     void _updateDeathIcon();
     void _updateEquips();
@@ -135,12 +135,12 @@ protected:
     void _updateFloatingArea();
     // We use QList of cards instead of a single card as parameter here, just in case
     // we need to do group animation in the future.
-    virtual void addEquips(QList<CardItem *> &equips, bool isDashboard = true);
-    virtual QList<CardItem *> removeEquips(const QList<int> &cardIds, bool isDashboard = true);
+    virtual void addEquips(QList<CardItem *> &equips);
+    virtual QList<CardItem *> removeEquips(const QList<int> &cardIds);
     virtual void addDelayedTricks(QList<CardItem *> &judges);
     virtual QList<CardItem *> removeDelayedTricks(const QList<int> &cardIds);
     virtual void updateDelayedTricks();
-    
+
     // This is a dirty but easy design, we require children class to call create controls after
     // everything specific to the children has been setup (such as the frames that we attach
     // the controls. Consider revise this in the future.
@@ -180,13 +180,12 @@ protected:
     // phase area of dashboard;
     QRect _m_floatingAreaRect;
     QGraphicsPixmapItem *_m_floatingArea;
-       
+
     QList<QGraphicsPixmapItem *> _m_judgeIcons;
     QList<CardItem *> _m_judgeCards;
 
     QGraphicsProxyWidget *_m_equipRegions[S_EQUIP_AREA_LENGTH];
     CardItem *_m_equipCards[S_EQUIP_AREA_LENGTH];
-    CardItem *_m_photo_treasure; // for photos to display treasure only
     QLabel *_m_equipLabel[S_EQUIP_AREA_LENGTH];
     QParallelAnimationGroup *_m_equipAnim[S_EQUIP_AREA_LENGTH];
     QMutex _mutexEquipAnim;
@@ -196,7 +195,7 @@ protected:
     RoleComboBox *_m_roleComboBox;
     QSanCommandProgressBar *_m_progressBar;
     QGraphicsProxyWidget *_m_progressBarItem;
-    
+
     // in order to apply different graphics effect;
     QGraphicsPixmapItem *_m_groupMain;
     QGraphicsPixmapItem *_m_groupDeath;
@@ -210,7 +209,7 @@ protected:
 
     // The following stuffs for showing distance
     QGraphicsPixmapItem *_m_distanceItem;
-    
+
     // animations
     QAbstractAnimation *_m_huashenAnimation;
     QGraphicsItem *_m_huashenItem;
@@ -220,13 +219,11 @@ protected:
 protected slots:
     virtual void _onEquipSelectChanged();
 
-private:   
-    bool _startLaying();    
+private:
+    bool _startLaying();
     void clearVotes();
     int _lastZ;
     bool _allZAdjusted;
-
-    QString _m_treasureName;
 
 signals:
     void selected_changed();

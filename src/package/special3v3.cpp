@@ -96,7 +96,7 @@ public:
     }
 
     virtual bool trigger(TriggerEvent, Room *room, ServerPlayer *player, QVariant &data) const{
-        JudgeStar judge = data.value<JudgeStar>();
+        JudgeStruct *judge = data.value<JudgeStruct *>();
         const Card *card = NULL;
         if (room->getMode().startsWith("06_") || room->getMode().startsWith("04_")) {
             if (AI::GetRelation3v3(player, judge->who) != AI::Friend) return false;
@@ -189,7 +189,7 @@ public:
                 }
             }
         } else {
-            CardStar card = NULL;
+            const Card *card = NULL;
             if (triggerEvent == CardUsed) {
                 CardUseStruct use = data.value<CardUseStruct>();
                 card = use.card;
@@ -430,7 +430,8 @@ public:
     }
 
     virtual int getCorrect(const Player *from, const Player *to) const{
-        if (ServerInfo.GameMode.startsWith("06_") || ServerInfo.GameMode.startsWith("04_")) {
+        if (ServerInfo.GameMode.startsWith("06_") || ServerInfo.GameMode.startsWith("04_")
+            || ServerInfo.GameMode == "08_defense") {
             int dist = 0;
             if (from->getRole().at(0) != to->getRole().at(0)) {
                 foreach (const Player *p, to->getAliveSiblings()) {
@@ -482,7 +483,7 @@ public:
 
     virtual bool triggerable(const ServerPlayer *target) const{
         QString mode = target->getRoom()->getMode();
-        return !mode.startsWith("06_") && !mode.startsWith("04_");
+        return !mode.startsWith("06_") && !mode.startsWith("04_") && mode != "08_defense";
     }
 
     virtual bool trigger(TriggerEvent triggerEvent, Room *room, ServerPlayer *player, QVariant &data) const{

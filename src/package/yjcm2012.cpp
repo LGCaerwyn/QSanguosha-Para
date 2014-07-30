@@ -107,7 +107,7 @@ QiceCard::QiceCard() {
 }
 
 bool QiceCard::targetFilter(const QList<const Player *> &targets, const Player *to_select, const Player *Self) const{
-    CardStar card = Self->tag.value("qice").value<CardStar>();
+    const Card *card = Self->tag.value("qice").value<const Card *>();
     Card *mutable_card = const_cast<Card *>(card);
     if (mutable_card)
         mutable_card->addSubcards(this->subcards);
@@ -115,7 +115,7 @@ bool QiceCard::targetFilter(const QList<const Player *> &targets, const Player *
 }
 
 bool QiceCard::targetFixed() const{
-    CardStar card = Self->tag.value("qice").value<CardStar>();
+    const Card *card = Self->tag.value("qice").value<const Card *>();
     Card *mutable_card = const_cast<Card *>(card);
     if (mutable_card)
         mutable_card->addSubcards(this->subcards);
@@ -123,7 +123,7 @@ bool QiceCard::targetFixed() const{
 }
 
 bool QiceCard::targetsFeasible(const QList<const Player *> &targets, const Player *Self) const{
-    CardStar card = Self->tag.value("qice").value<CardStar>();
+    const Card *card = Self->tag.value("qice").value<const Card *>();
     Card *mutable_card = const_cast<Card *>(card);
     if (mutable_card)
         mutable_card->addSubcards(this->subcards);
@@ -163,7 +163,7 @@ public:
         if (cards.length() < Self->getHandcardNum())
             return NULL;
 
-        CardStar c = Self->tag.value("qice").value<CardStar>();
+        const Card *c = Self->tag.value("qice").value<const Card *>();
         if (c) {
             QiceCard *card = new QiceCard;
             card->setUserString(c->objectName());
@@ -312,7 +312,7 @@ public:
                 room->sendLog(log);
             }
         } else if (triggerEvent == FinishJudge) {
-            JudgeStar judge = data.value<JudgeStar>();
+            JudgeStruct *judge = data.value<JudgeStruct *>();
             if (judge->reason != objectName() || !target->isAlive()) return false;
 
             QString color = judge->card->isRed() ? "red" : "black";
@@ -365,12 +365,7 @@ public:
     virtual bool trigger(TriggerEvent, Room *room, ServerPlayer *liaohua, QVariant &) const{
         if (liaohua->getPhase() == Player::RoundStart) {
             room->broadcastSkillInvoke(objectName());
-            LogMessage log;
-            log.type = "#TriggerSkill";
-            log.from = liaohua;
-            log.arg = objectName();
-            room->sendLog(log);
-            room->notifySkillInvoked(liaohua, objectName());
+            room->sendCompulsoryTriggerLog(liaohua, objectName());
 
             liaohua->setPhase(Player::Play);
             room->broadcastProperty(liaohua, "phase");
@@ -479,13 +474,7 @@ public:
             else if (damage.card->hasFlag("drank"))
                 index = 2;
             room->broadcastSkillInvoke(objectName(), index);
-
-            LogMessage log;
-            log.type = "#TriggerSkill";
-            log.from = player;
-            log.arg = objectName();
-            room->sendLog(log);
-            room->notifySkillInvoked(player, objectName());
+            room->sendCompulsoryTriggerLog(player, objectName());
 
             room->loseMaxHp(player);
         }
@@ -608,7 +597,7 @@ bool JiefanCard::targetFilter(const QList<const Player *> &targets, const Player
 void JiefanCard::use(Room *room, ServerPlayer *source, QList<ServerPlayer *> &targets) const{
     room->removePlayerMark(source, "@rescue");
     ServerPlayer *target = targets.first();
-    source->tag["JiefanTarget"] = QVariant::fromValue((PlayerStar)target);
+    source->tag["JiefanTarget"] = QVariant::fromValue(target);
     room->broadcastSkillInvoke("jiefan");
     room->doLightbox("$JiefanAnimate", 2500);
 
@@ -622,7 +611,7 @@ void JiefanCard::use(Room *room, ServerPlayer *source, QList<ServerPlayer *> &ta
 void JiefanCard::onEffect(const CardEffectStruct &effect) const{
     Room *room = effect.to->getRoom();
 
-    PlayerStar target = effect.from->tag["JiefanTarget"].value<PlayerStar>();
+    ServerPlayer *target = effect.from->tag["JiefanTarget"].value<ServerPlayer *>();
     QVariant data = effect.from->tag["JiefanTarget"];
     if (target && !room->askForCard(effect.to, ".Weapon", "@jiefan-discard::" + target->objectName(), data))
         target->drawCards(1, "jiefan");
@@ -770,7 +759,7 @@ public:
             DamageStruct damage = data.value<DamageStruct>();
             if (damage.card && damage.card->isKindOf("Slash") && damage.card->getSkillName() == objectName()) {
                 QVariantList slash_list = damage.from->tag["InvokeLihuo"].toList();
-                slash_list << QVariant::fromValue((CardStar)damage.card);
+                slash_list << QVariant::fromValue(damage.card);
                 damage.from->tag["InvokeLihuo"] = QVariant::fromValue(slash_list);
             }
         } else if (TriggerSkill::triggerable(player) && !player->hasFlag("Global_ProcessBroken")) {
@@ -781,7 +770,7 @@ public:
             bool can_invoke = false;
             QVariantList slash_list = use.from->tag["InvokeLihuo"].toList();
             foreach (QVariant card, slash_list) {
-                if (card.value<CardStar>() == (CardStar)use.card) {
+                if (card.value<const Card *>() == use.card) {
                     can_invoke = true;
                     slash_list.removeOne(card);
                     use.from->tag["InvokeLihuo"] = QVariant::fromValue(slash_list);
@@ -790,13 +779,8 @@ public:
             }
             if (!can_invoke) return false;
 
-            LogMessage log;
-            log.type = "#TriggerSkill";
-            log.from = player;
-            log.arg = objectName();
-            room->sendLog(log);
-
             room->broadcastSkillInvoke("lihuo", 2);
+            room->sendCompulsoryTriggerLog(player, objectName());
             room->loseHp(player, 1);
         }
         return false;

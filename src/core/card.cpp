@@ -531,7 +531,7 @@ const Card *Card::Parse(const QString &str) {
 Card *Card::Clone(const Card *card) {
     Card::Suit suit = card->getSuit();
     int number = card->getNumber();
-    
+
     QObject *card_obj = NULL;
     if (card->isKindOf("LuaBasicCard")) {
         const LuaBasicCard *lcard = qobject_cast<const LuaBasicCard *>(card);
@@ -581,7 +581,7 @@ bool Card::targetFilter(const QList<const Player *> &targets, const Player *to_s
 bool Card::targetFilter(const QList<const Player *> &targets, const Player *to_select, const Player *Self,
                         int &maxVotes) const{
     bool canSelect = targetFilter(targets, to_select, Self);
-    maxVotes = canSelect ? 1 : 0; 
+    maxVotes = canSelect ? 1 : 0;
     return canSelect;
 }
 
@@ -613,7 +613,7 @@ void Card::onUse(Room *room, const CardUseStruct &use) const{
     room->sendLog(log);
 
     if (card_use.card->isKindOf("Collateral")) { // put it here for I don't wanna repeat these codes in Card::onUse
-        ServerPlayer *victim = card_use.to.first()->tag["collateralVictim"].value<PlayerStar>();
+        ServerPlayer *victim = card_use.to.first()->tag["collateralVictim"].value<ServerPlayer *>();
         if (victim) {
             LogMessage log;
             log.type = "#CollateralSlash";
@@ -630,12 +630,12 @@ void Card::onUse(Room *room, const CardUseStruct &use) const{
         used_cards.append(card_use.card->getSubcards());
     else
         used_cards << card_use.card->getEffectiveId();
- 
+
     if (card_use.card->getTypeId() != TypeSkill) {
         CardMoveReason reason(CardMoveReason::S_REASON_USE, card_use.from->objectName(), QString(), card_use.card->getSkillName(), QString());
         if (card_use.to.size() == 1)
             reason.m_targetId = card_use.to.first()->objectName();
-        reason.m_extraData = QVariant::fromValue((CardStar)card_use.card);
+        reason.m_extraData = QVariant::fromValue(card_use.card);
         CardsMoveStruct move(used_cards, card_use.from, NULL, Player::PlaceUnknown, Player::PlaceTable, reason);
         moves.append(move);
         room->moveCardsAtomic(moves, true);

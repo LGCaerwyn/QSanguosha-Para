@@ -2,7 +2,7 @@
 -- and it is a little different from config.ini
 
 config = {
-	version = "20140601",
+	version = "20140701",
 	version_name = "V2",
 	mod_name = "Para",
 	big_font = 56,
@@ -69,6 +69,7 @@ config = {
 		"NostalYJCM2012",
 		"NostalYJCM2013",
 		"NostalGeneral",
+		"JianGeDefense",
 		"BossMode",
 		"Test"
 	},
@@ -228,6 +229,7 @@ config = {
 		"dingfeng->sp_dingfeng",
 		"fazheng->ol_fazheng",
 		"guanxingzhangbao->ol_guanxingzhangbao",
+		"hetaihou->sp_hetaihou",
 		"jiaxu->sp_jiaxu",
 		"liubei->tw_liubei",
 		"madai->heg_madai|ol_madai",
@@ -338,5 +340,20 @@ config = {
 		"kuanggu:85",
 		"yongsi:90",
 		"zhiheng:90",
+	},
+
+	jiange_defense_kingdoms = {
+		loyalist = "shu",
+		rebel = "wei",
+	},
+
+	jiange_defense_machine = {
+		wei = "jg_machine_tuntianchiwen+jg_machine_shihuosuanni+jg_machine_fudibian",
+		shu = "jg_machine_yunpingqinglong+jg_machine_jileibaihu",
+	},
+
+	jiange_defense_soul = {
+		wei = "jg_soul_caozhen+jg_soul_simayi",
+		shu = "jg_soul_liubei+jg_soul_zhugeliang",
 	}
 }

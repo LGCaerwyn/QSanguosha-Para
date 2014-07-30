@@ -11,7 +11,7 @@ return {
 
 	["analeptic"] = "酒",
 	[":analeptic"] = "基本牌<br /><b>时机</b>：出牌阶段/你处于濒死状态时<br /><b>目标</b>：你<br /><b>效果</b>：目标角色本回合使用的下一张【杀】将要造成的伤害+1/目标角色回复1点体力。",
-	["#UnsetDrankEndOfTurn"] = "当前回合结束，%from 的【<font color=\"yellow\"><b>酒</b></font>】效果消失",
+	["#UnsetDrankEndOfTurn"] = "%from 回合结束，%to 的【<font color=\"yellow\"><b>酒</b></font>】效果消失",
 
 	["fan"] = "朱雀羽扇",
 	[":fan"] = "装备牌·武器<br /><b>攻击范围</b>：４<br /><b>武器技能</b>：你可以将一张普通【杀】当火【杀】使用。",
@@ -25,7 +25,7 @@ return {
 	["#VineDamage"] = "%from 的防具【<font color=\"yellow\"><b>藤甲</b></font>】效果被触发，火焰伤害由 %arg 点增加至 %arg2 点",
 
 	["silver_lion"] = "白银狮子",
-	[":silver_lion"] = "装备牌·防具<br /><b>防具技能</b>：锁定技。每当你受到伤害时，若此伤害多于1点，防止多余的伤害。每当你失去装备区里的【白银狮子】后，你回复1点体力。",
+	[":silver_lion"] = "装备牌·防具<br /><b>防具技能</b>：锁定技。每当你受到伤害时，若此伤害大于1点，防止多余的伤害。每当你失去装备区里的【白银狮子】后，你回复1点体力。",
 	["#SilverLion"] = "%from 的防具【%arg2】防止了 %arg 点伤害，减至 <font color=\"yellow\"><b>1</b></font> 点",
 
 	["fire_attack"] = "火攻",
