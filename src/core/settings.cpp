@@ -123,6 +123,7 @@ void Settings::init() {
     EnableAutoTarget = value("EnableAutoTarget", true).toBool();
     EnableIntellectualSelection = value("EnableIntellectualSelection", true).toBool();
     EnableDoubleClick = value("EnableDoubleClick", false).toBool();
+    EnableSuperDrag = value("EnableSuperDrag", false).toBool();
     NullificationCountDown = value("NullificationCountDown", 8).toInt();
     OperationTimeout = value("OperationTimeout", 15).toInt();
     OperationNoLimit = value("OperationNoLimit", false).toBool();
@@ -133,6 +134,8 @@ void Settings::init() {
     EffectVolume = value("EffectVolume", 1.0f).toFloat();
 
     BackgroundImage = value("BackgroundImage", "image/system/backdrop/default.jpg").toString();
+
+    BubbleChatBoxKeepTime = value("BubbleChatboxKeepTime", 2000).toInt();
 
     QStringList roles_ban, kof_ban, hulao_ban, xmode_ban, bossmode_ban, basara_ban, hegemony_ban, pairs_ban;
 

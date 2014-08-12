@@ -9,7 +9,7 @@ math.randomseed(tostring(os.time()):reverse():sub(1, 6))
 -- SmartAI is the base class for all other specialized AI classes
 SmartAI = (require "middleclass").class("SmartAI")
 
-version = "QSanguosha AI 20140701 (V1.4142135 Alpha)"
+version = "QSanguosha AI 20140801 (V1.41421356 Alpha)"
 --- this function is only function that exposed to the host program
 --- and it clones an AI instance by general name
 -- @param player The ServerPlayer object that want to create the AI object
@@ -3800,7 +3800,7 @@ function SmartAI:damageIsEffective(player, nature, source)
 
 	if player:getMark("@fenyong") > 0 then return false end
 	if player:getMark("@fog") > 0 and nature ~= sgs.DamageStruct_Thunder then return false end
-	if player:hasSkill("shixin") and nature == sgs.DamageStruct_Fire then return false end
+	if player:hasSkills("shixin|jgyuhuo") and nature == sgs.DamageStruct_Fire then return false end
 	local equipsToDec = source:objectName() == self.player:objectName() and self.equipsToDec or 0
 	if player:hasSkill("mingshi") and source:getEquips():length() - equipsToDec <= math.min(2, player:getEquips():length()) then return false end
 	if player:hasSkill("yuce") and not player:isKongcheng() and player:getHp() > 1 then
